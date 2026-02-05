@@ -1,293 +1,495 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>My Star - 스타벅스 체크인 지도</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            font-family: 'Noto Sans KR', sans-serif; 
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            font-family: 'Noto Sans KR', sans-serif;
+            overflow: hidden;
         }
-        #map-container { 
-            height: 40vh; 
-            width: 100%; 
+
+        #map-container {
+            height: 100vh;
+            width: 100vw;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
-        #map { 
-            height: 100%; 
-            width: 100%; 
+
+        #map {
+            height: 100%;
+            width: 100%;
+            background: #f8f9fa;
         }
-        #controls { 
-            height: 60vh; 
-            padding: 20px; 
-            background: #f8f9fa; 
-            border-top: 2px solid #ddd; 
-            overflow-y: auto; 
-            box-sizing: border-box; 
+
+        /* Floating Controls Panel */
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
         }
-        .filter-container { 
-            display: flex; 
-            gap: 15px; 
-            margin-bottom: 15px; 
+
+        #back-btn {
+            padding: 8px 16px;
+            background: #00704A;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            display: none;
+            margin-right: 10px;
+            font-size: 0.9em;
+            transition: background 0.2s;
         }
-        .filter-group { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 5px; 
+
+        #back-btn:hover {
+            background: #005c3d;
         }
-        select { 
-            padding: 8px; 
-            border-radius: 4px; 
-            border: 1px solid #00704A; 
-            min-width: 150px; 
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
         }
-        .store-container { 
-            background: white; 
-            padding: 15px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
+
+        #view-title {
+            font-size: 1.25rem;
+            margin: 0;
+            font-weight: 700;
+            color: #333;
         }
-        #store-list { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0; 
+
+        .store-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: transparent;
+            border: none;
+            padding: 0;
         }
-        .store-item { 
-            padding: 10px; 
-            border-bottom: 1px solid #eee; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
+
+        /* Custom Scrollbar */
+        .store-container::-webkit-scrollbar {
+            width: 6px;
         }
-        .store-item:hover {
-            background: #f0f0f0;
+
+        .store-container::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 3px;
+        }
+
+        .stats-summary {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #store-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .store-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .store-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Checkbox Styling */
+        input[type="checkbox"] {
+            accent-color: #00704A;
+            width: 18px;
+            height: 18px;
+            margin-top: 3px;
+            cursor: pointer;
+        }
+
+        .store-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .store-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #222;
+        }
+
+        .store-addr {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 2px;
         }
     </style>
 </head>
+
 <body>
 
-    <div id="map-container"><div id="map"></div></div>
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
 
     <div id="controls">
-        <div class="filter-container">
-            <div class="filter-group">
-                <label>자치구 선택</label>
-                <select id="gu-select">
-                    <option value="total">서울 전체</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>행정동 선택</label>
-                <select id="dong-select" disabled>
-                    <option value="total">구 전체</option>
-                </select>
-            </div>
+        <div class="header-row">
+            <button id="back-btn" onclick="resetToSeoul()">←</button>
+            <h2 id="view-title">서울시 전체</h2>
+        </div>
+
+        <div class="stats-summary">
+            총 매장: <span id="count-total" style="font-weight:bold; color:#333;">0</span>개
+            (<span id="count-checked" style="color:#00704A; font-weight:bold;">0</span> 방문)
         </div>
 
         <div class="store-container">
-            <h4>매장 목록 (<span id="count-checked">0</span> / <span id="count-total">0</span>)</h4>
             <ul id="store-list"></ul>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        console.log('스크립트 시작');
+        // --- [1] 상태 및 변수 ---
+        const map = L.map('map', {
+            zoomControl: false,
+            wheelPxPerZoomLevel: 120, // 스크롤 줌 속도 절반
+            zoomSnap: 0.5,
+            zoomDelta: 0.5
+        }).setView([37.5665, 126.9780], 11);
 
-        // [1] 초기 설정 및 변수 선언
-        const map = L.map('map', { zoomControl: false }).setView([37.5665, 126.9801], 11);
-        console.log('지도 생성 완료');
-        
-        let geojsonLayer;
-        let statsMap = {};
+        let guLayer, dongLayer;
+        let guStatsMap = {};
+        let currentLevel = 'GU';
+        let currentGu = null;
 
-        // [2] 방문율에 따른 지도 색상 결정
+        // --- [2] 유틸리티 함수 ---
         const getColor = (ratio) => {
-            return ratio > 0.8 ? '#00441b' :
-                   ratio > 0.5 ? '#238b45' :
-                   ratio > 0.2 ? '#74c476' :
-                                 '#ffffff';
+            return ratio >= 1.0 ? '#00441b' :
+                ratio >= 0.8 ? '#006d2c' :
+                    ratio >= 0.6 ? '#238b45' :
+                        ratio >= 0.4 ? '#41ab5d' :
+                            ratio >= 0.2 ? '#74c476' :
+                                ratio > 0 ? '#a1d99b' :
+                                    '#ffffff';
         };
 
-        // [3] 지도 색상만 새로고침하는 함수
-        function refreshMap() {
-            console.log('지도 새로고침 시작');
-            fetch('/api/gu-stats')
-                .then(res => res.json())
-                .then(guStats => {
-                    console.log('gu-stats 데이터:', guStats);
-                    guStats.forEach(s => { 
-                        statsMap[s.gu] = s.visited_stores / s.total_stores || 0; 
+        // Gu Layer Style (Level 1)
+        const styleGuMode = (feature) => {
+            // seoul_gu_map.geojson uses 'name' property for Gu name
+            const guName = feature.properties.name || feature.properties.SIG_KOR_NM;
+            const ratio = guStatsMap[guName] || 0;
+            return {
+                fillColor: getColor(ratio),
+                weight: 1.5, // 구 경계선 두께
+                opacity: 1,
+                color: 'black', // 구 경계선 색상 (검정색으로 변경)
+                fillOpacity: 0.75
+            };
+        };
+
+        // Dong Layer Style (Level 2)
+        const styleDongMode = (feature) => {
+            // seoul_map.geojson uses 'sggnm' property
+            if (feature.properties.sggnm !== currentGu) {
+                // Use opacity 0 instead of stroke:false/fill:false
+                // This allows setStyle to properly show the feature later
+                return {
+                    stroke: true,
+                    fill: true,
+                    weight: 0,
+                    opacity: 0,
+                    fillOpacity: 0,
+                    interactive: false
+                };
+            }
+
+            const ratio = (feature.properties.visitRatio !== undefined) ? feature.properties.visitRatio : 0;
+            return {
+                fillColor: getColor(ratio),
+                weight: 1, // 동 경계선 두께
+                opacity: 1,
+                color: 'black', // 동 경계선 색상 (검은색)
+                fillOpacity: 0.85,
+                interactive: true
+            };
+        };
+
+        // --- [3] 핵심 로직 ---
+
+        function resetToSeoul() {
+            currentLevel = 'GU';
+            currentGu = null;
+            document.getElementById('back-btn').style.display = 'none';
+            document.getElementById('view-title').textContent = '서울시 전체';
+
+            map.flyTo([37.5665, 126.9780], 11, { duration: 1.5 });
+
+            // Toggle Layers
+            if (dongLayer) map.removeLayer(dongLayer);
+            if (guLayer) guLayer.addTo(map);
+
+            // Refresh Gu Styles
+            if (guLayer) {
+                guLayer.eachLayer(layer => {
+                    layer.setStyle(styleGuMode(layer.feature));
+                    layer.unbindTooltip();
+                    const guName = layer.feature.properties.name || layer.feature.properties.SIG_KOR_NM;
+                    const ratio = Math.round((guStatsMap[guName] || 0) * 100);
+                    layer.bindTooltip(`<b>${guName}</b><br>정복률: ${ratio}%`, {
+                        sticky: true,
+                        direction: 'center',
+                        className: 'gu-tooltip'
                     });
-                    
-                    if (geojsonLayer) {
-                        geojsonLayer.eachLayer(layer => {
-                            const guName = layer.feature.properties.sggnm;
-                            layer.setStyle({
-                                fillColor: getColor(statsMap[guName] || 0)
-                            });
+                });
+            }
+            loadStoreList('total');
+        }
+
+        function drillDownToGu(guName, bounds) {
+            currentLevel = 'DONG';
+            currentGu = guName;
+            document.getElementById('back-btn').style.display = 'block';
+            document.getElementById('view-title').textContent = guName;
+
+            map.flyToBounds(bounds, {
+                padding: [100, 100],
+                maxZoom: 13.5,
+                duration: 1.2
+            });
+
+            // 1. Switch Layers Immediately (Prevent map disappearing)
+            if (guLayer) map.removeLayer(guLayer);
+
+            if (dongLayer) {
+                dongLayer.addTo(map);
+                // Apply base style immediately so boundaries appear
+                dongLayer.eachLayer(layer => {
+                    if (layer.feature.properties.sggnm === currentGu) {
+                        layer.setStyle(styleDongMode(layer.feature));
+                        // Temporary tooltip until stats load
+                        const dName = layer.feature.properties.adm_nm.split(' ').pop();
+                        layer.unbindTooltip();
+                        layer.bindTooltip(`<b>${dName}</b>`, { sticky: true });
+                    } else {
+                        layer.setStyle(styleDongMode(layer.feature)); // Hide
+                    }
+                });
+            }
+
+            // 2. Fetch Stats & Refine Styles
+            fetch(`/api/dong-stats?gu=${guName}`)
+                .then(res => res.json())
+                .then(stores => {
+                    // Normalize dong name: remove numbers and "가" suffix
+                    // DB: "월계동", "공릉동", "상계동"  
+                    // GeoJSON: "월계1동", "공릉2동", "상계3·4가"
+                    const normalizeDongName = (name) => {
+                        return name.replace(/[0-9·]+가?$/g, '');  // Remove numbers, bullets, and "가"
+                    };
+
+                    const dongStats = {};
+                    stores.forEach(s => {
+                        if (!dongStats[s.dong]) dongStats[s.dong] = { total: 0, visited: 0 };
+                        dongStats[s.dong].total++;
+                        if (s.visited) dongStats[s.dong].visited++;
+                    });
+
+                    if (dongLayer) {
+                        dongLayer.eachLayer(layer => {
+                            const props = layer.feature.properties;
+
+                            if (props.sggnm === guName) {
+                                const rawDongName = props.adm_nm.split(' ').pop();
+                                const normalizedDongName = normalizeDongName(rawDongName);
+                                const stat = dongStats[normalizedDongName] || { visited: 0, total: 0 };
+
+                                // Calculate ratio: if no stores, mark as 100% (darkest = complete)
+                                let ratio = 0;
+                                if (stat.total === 0) ratio = 1.0;
+                                else ratio = stat.visited / stat.total;
+
+                                layer.feature.properties.visitRatio = ratio;
+                                layer.setStyle(styleDongMode(layer.feature));
+
+                                layer.unbindTooltip();
+                                const statText = stat.total === 0 ? "매장 없음" : `${stat.visited}/${stat.total}`;
+                                layer.bindTooltip(`<b>${rawDongName}</b><br>${statText} (${Math.round(ratio * 100)}%)`, { sticky: true });
+                            }
                         });
                     }
-                })
-                .catch(err => console.error('refreshMap 에러:', err));
+                    updateStoreList(stores);
+                });
         }
 
-        // [4] 체크박스 클릭 시 서버에 저장하는 함수
-        function toggleVisit(storeCode, isChecked) {
-            console.log('toggleVisit:', storeCode, isChecked);
-            fetch('/api/update-visit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ store_code: storeCode, visited: isChecked })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log('update-visit 응답:', data);
-                if(data.status === 'success') {
-                    refreshMap();
-                    updateCheckedCount();
-                }
-            })
-            .catch(err => console.error('toggleVisit 에러:', err));
+        function updateStoreList(storeData) {
+            const list = document.getElementById('store-list');
+            list.innerHTML = storeData.map(s => `
+                <li class="store-item">
+                    <input type="checkbox" 
+                           ${s.visited === 1 ? 'checked' : ''} 
+                           onclick="toggleVisit('${s.store_code}', this.checked, '${s.gu}')">
+                    <div class="store-info">
+                        <span class="store-name">${s.store_name}</span>
+                        <span class="store-addr">${s.gu} ${s.dong}</span>
+                    </div>
+                </li>
+            `).join('');
+
+            document.getElementById('count-total').textContent = storeData.length;
+            updateCheckedCount();
         }
 
-        // [5] 체크된 개수 업데이트
         function updateCheckedCount() {
             const checkboxes = document.querySelectorAll('#store-list input[type="checkbox"]');
             const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
             document.getElementById('count-checked').textContent = checkedCount;
         }
 
-        // [6] 매장 리스트 생성 함수
-        function updateStoreList(storeData) {
-            console.log('매장 리스트 업데이트:', storeData.length, '개');
-            const list = document.getElementById('store-list');
-            list.innerHTML = storeData.map(s => `
-                <li class="store-item">
-                    <input type="checkbox" 
-                           ${s.visited === 1 ? 'checked' : ''} 
-                           onclick="toggleVisit('${s.store_code}', this.checked)">
-                    <span>${s.dong} - ${s.store_name}</span>
-                </li>
-            `).join('');
-            
-            document.getElementById('count-total').textContent = storeData.length;
-            updateCheckedCount();
+        window.toggleVisit = function (storeCode, isChecked, guName) {
+            fetch('/api/update-visit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_code: storeCode, visited: isChecked })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (currentLevel === 'DONG' && currentGu === guName) {
+                            // Refresh Dong View
+                            fetch(`/api/dong-stats?gu=${guName}`).then(r => r.json()).then(stores => {
+                                const dongStats = {};
+                                stores.forEach(s => {
+                                    if (!dongStats[s.dong]) dongStats[s.dong] = { total: 0, visited: 0 };
+                                    dongStats[s.dong].total++;
+                                    if (s.visited) dongStats[s.dong].visited++;
+                                });
+
+                                dongLayer.eachLayer(layer => {
+                                    if (layer.feature.properties.sggnm === guName) {
+                                        const dName = layer.feature.properties.adm_nm.split(' ').pop();
+                                        const stat = dongStats[dName] || { visited: 0, total: 0 };
+
+                                        let ratio = 0;
+                                        if (stat.total === 0) ratio = 1.0;
+                                        else ratio = stat.visited / stat.total;
+
+                                        layer.feature.properties.visitRatio = ratio;
+                                        layer.setStyle(styleDongMode(layer.feature));
+                                    }
+                                });
+                                updateCheckedCount();
+                            });
+                        }
+
+                        // Always refresh Gu stats
+                        fetch('/api/gu-stats').then(res => res.json()).then(stats => {
+                            stats.forEach(s => {
+                                guStatsMap[s.gu] = s.total_stores ? s.visited_stores / s.total_stores : 0;
+                            });
+                        });
+                    }
+                });
+        };
+
+        function loadStoreList(gu) {
+            let url = '/api/dong-stats';
+            if (gu !== 'total') url += `?gu=${gu}`;
+
+            fetch(url).then(res => res.json()).then(data => updateStoreList(data));
         }
 
-        // [7] 메인 데이터 로드 (루트에서 geojson 가져오기)
-        console.log('메인 데이터 로딩 시작');
-   Promise.all([
-       fetch('/static/seoul_map.geojson').then(res => {  // ← 이 부분 수정!
-           console.log('geojson 응답:', res.status);
-           if (!res.ok) throw new Error('GeoJSON 로드 실패');
-           return res.json();
-       }),
-            fetch('/api/gu-stats').then(res => {
-                console.log('gu-stats 응답:', res.status);
-                if (!res.ok) throw new Error('gu-stats 로드 실패');
-                return res.json();
-            })
-        ]).then(([geoData, guStats]) => {
-            console.log('메인 데이터 로드 완료');
-            console.log('GeoJSON features:', geoData.features ? geoData.features.length : 0);
-            console.log('구 통계:', guStats.length);
+        // --- [4] 초기화 ---
+        Promise.all([
+            fetch('/static/seoul_gu_map.geojson').then(r => r.json()),
+            fetch('/static/seoul_map.geojson').then(r => r.json()),
+            fetch('/api/gu-stats').then(r => r.json())
+        ]).then(([guGeo, dongGeo, guStats]) => {
 
-            // 자치구 드롭다운 채우기
-            const guSelect = document.getElementById('gu-select');
-            guStats.forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = item.gu; 
-                opt.textContent = item.gu;
-                guSelect.appendChild(opt);
+            // 1. Init stats
+            guStats.forEach(s => {
+                guStatsMap[s.gu] = s.total_stores ? s.visited_stores / s.total_stores : 0;
             });
 
-            // 지도 색칠하기
-            guStats.forEach(s => { 
-                statsMap[s.gu] = s.visited_stores / s.total_stores || 0;
-            });
-
-            geojsonLayer = L.geoJSON(geoData, {
-                style: (feature) => ({
-                    fillColor: getColor(statsMap[feature.properties.sggnm] || 0),
-                    weight: 1, 
-                    color: 'white', 
-                    fillOpacity: 0.8
-                }),
+            // 2. Create Dong Layer (Initially Hidden, created first so we can refer to it)
+            dongLayer = L.geoJSON(dongGeo, {
+                style: styleDongMode,
                 onEachFeature: (feature, layer) => {
-                    layer.on('mouseover', function() {
-                        this.setStyle({ weight: 3, color: '#00704A' });
+                    layer.on('mouseover', function () {
+                        if (currentLevel === 'DONG' && feature.properties.sggnm === currentGu) {
+                            this.setStyle({ weight: 2, color: 'black', fillOpacity: 0.95 });
+                        }
                     });
-                    layer.on('mouseout', function() {
-                        this.setStyle({ weight: 1, color: 'white' });
+                    layer.on('mouseout', function () {
+                        if (currentLevel === 'DONG' && feature.properties.sggnm === currentGu) {
+                            this.setStyle(styleDongMode(feature));
+                        }
+                    });
+                }
+            });
+
+            // 3. Create Gu Layer (Visible)
+            guLayer = L.geoJSON(guGeo, {
+                style: styleGuMode,
+                onEachFeature: (feature, layer) => {
+                    const guName = feature.properties.name || feature.properties.SIG_KOR_NM;
+
+                    const ratio = Math.round((guStatsMap[guName] || 0) * 100);
+                    layer.bindTooltip(`<b>${guName}</b><br>정복률: ${ratio}%`, {
+                        sticky: true,
+                        direction: 'center',
+                        className: 'gu-tooltip'
+                    });
+
+                    layer.on('mouseover', function () {
+                        this.setStyle({ weight: 3, color: 'white', fillOpacity: 0.9 });
+                    });
+                    layer.on('mouseout', function () {
+                        this.setStyle(styleGuMode(feature));
+                    });
+                    layer.on('click', function (e) {
+                        drillDownToGu(guName, e.target.getBounds());
                     });
                 }
             }).addTo(map);
-            
-            console.log('지도 레이어 추가 완료');
+
+            loadStoreList('total');
+
         }).catch(err => {
-            console.error('메인 데이터 로드 에러:', err);
+            console.error(err);
             alert('데이터 로드 실패: ' + err.message);
         });
 
-        // [8] 자치구 선택 이벤트
-        document.getElementById('gu-select').onchange = function(e) {
-            const selectedGu = e.target.value;
-            const dongSelect = document.getElementById('dong-select');
-            console.log('구 선택:', selectedGu);
-
-            if (selectedGu === 'total') {
-                dongSelect.disabled = true;
-                dongSelect.innerHTML = '<option value="total">구 전체</option>';
-                document.getElementById('store-list').innerHTML = '';
-                document.getElementById('count-total').textContent = '0';
-                document.getElementById('count-checked').textContent = '0';
-                return;
-            }
-
-            fetch(`/api/dong-stats?gu=${selectedGu}`)
-                .then(res => res.json())
-                .then(storeData => {
-                    console.log('매장 데이터:', storeData.length, '개');
-                    dongSelect.disabled = false;
-                    dongSelect.innerHTML = '<option value="total">구 전체</option>';
-
-                    const uniqueDongs = [...new Set(storeData.map(d => d.dong))].sort();
-                    uniqueDongs.forEach(d => {
-                        const opt = document.createElement('option');
-                        opt.value = d; 
-                        opt.textContent = d;
-                        dongSelect.appendChild(opt);
-                    });
-
-                    updateStoreList(storeData);
-                })
-                .catch(err => console.error('dong-stats 에러:', err));
-        };
-
-        // [9] 행정동 선택 이벤트
-        document.getElementById('dong-select').onchange = function(e) {
-            const selectedGu = document.getElementById('gu-select').value;
-            const selectedDong = e.target.value;
-            console.log('동 선택:', selectedDong);
-
-            fetch(`/api/dong-stats?gu=${selectedGu}`)
-                .then(res => res.json())
-                .then(storeData => {
-                    const filtered = selectedDong === 'total' ? 
-                                    storeData : 
-                                    storeData.filter(d => d.dong === selectedDong);
-                    updateStoreList(filtered);
-                })
-                .catch(err => console.error('dong filter 에러:', err));
-        };
-
-        console.log('스크립트 로드 완료');
     </script>
 </body>
+
 </html>
