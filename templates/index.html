@@ -1,565 +1,613 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 
 <head>
-    <title>My Star - 스타벅스 체크인 지도</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarMap Seoul</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Noto+Sans+KR:wght@400;500;700&display=swap"
-        rel="stylesheet">
+
     <style>
+        :root {
+            --starbucks-green: #00704a;
+            --text-primary: #1e3932;
+            --bg-light: #f7f7f7;
+            --map-bg: #3e2723;
+            /* Dark Luxurious Brown */
+            --map-border: #000000;
+        }
+
         body {
             margin: 0;
             padding: 0;
+            display: flex;
             height: 100vh;
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'Pretendard', sans-serif;
+            color: var(--text-primary);
             overflow: hidden;
         }
 
-        #map-container {
-            height: 100vh;
-            width: 100vw;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        #map {
-            height: 100%;
-            width: 100%;
-            background: #f8f9fa;
-        }
-
-        /* Floating Controls Panel */
-        #controls {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 320px;
-            max-height: calc(100vh - 40px);
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
+        #sidebar {
+            width: 380px;
+            background: white;
             display: flex;
             flex-direction: column;
-            box-sizing: border-box;
-            transition: all 0.3s ease;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
         }
 
-        #back-btn {
-            padding: 8px 16px;
-            background: #00704A;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            display: none;
-            margin-right: 10px;
-            font-size: 0.9em;
-            transition: background 0.2s;
+        .sidebar-header {
+            padding: 24px 20px 15px;
+            background: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
 
-        #back-btn:hover {
-            background: #005c3d;
-        }
-
-        .header-row {
+        .header-top {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 15px;
+            height: 32px;
         }
 
-        #view-title {
-            font-size: 1.25rem;
-            margin: 0;
+        .app-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--starbucks-green);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-actions span {
+            cursor: pointer;
+            color: #999;
+            font-size: 0.85rem;
+            margin-left: 10px;
+            transition: 0.2s;
+        }
+
+        .header-actions span:hover {
+            color: var(--starbucks-green);
+        }
+
+        #header-back-btn,
+        #gu-reset-btn {
+            display: none;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: opacity 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
+
+        #header-back-btn {
+            background: var(--starbucks-green);
+        }
+
+        #gu-reset-btn {
+            background: #d62828;
+            margin-right: 5px;
+        }
+
+        /* Red for reset */
+
+        #header-back-btn:hover,
+        #gu-reset-btn:hover {
+            opacity: 0.9;
+        }
+
+        .stats-container {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #777;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
             font-weight: 700;
             color: #333;
         }
 
-        .store-container {
-            flex-grow: 1;
+        .highlight {
+            color: var(--starbucks-green);
+        }
+
+        .list-container {
+            flex: 1;
             overflow-y: auto;
-            background: transparent;
-            border: none;
-            padding: 0;
         }
 
-        /* Custom Scrollbar */
-        .store-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .store-container::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 3px;
-        }
-
-        .stats-summary {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        #store-list {
+        #item-list {
             list-style: none;
             padding: 0;
             margin: 0;
         }
 
+        .gu-item,
         .store-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .store-item:last-child {
-            border-bottom: none;
-        }
-
-        /* Checkbox Styling */
-        input[type="checkbox"] {
-            accent-color: #00704A;
-            width: 18px;
-            height: 18px;
-            margin-top: 3px;
+            padding: 16px 24px;
+            border-bottom: 1px solid #f0f0f0;
             cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gu-item:hover,
+        .store-item:hover {
+            background-color: var(--bg-light);
+        }
+
+        .gu-count {
+            background: #eee;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 15px 20px;
+            background: #fdfdfd;
+            border-top: 1px solid #eee;
+            font-size: 0.75rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+
+        .store-item {
+            justify-content: start;
+        }
+
+        .checkbox-wrapper {
+            margin-right: 15px;
+        }
+
+        .custom-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visited .custom-checkbox {
+            background: var(--starbucks-green);
+            border-color: var(--starbucks-green);
+        }
+
+        .custom-checkbox::after {
+            content: '✔';
+            color: white;
+            font-size: 12px;
+            display: none;
+        }
+
+        .visited .custom-checkbox::after {
+            display: block;
         }
 
         .store-info {
-            display: flex;
-            flex-direction: column;
+            flex: 1;
+        }
+
+        .store-dong {
+            font-size: 0.8rem;
+            color: #888;
         }
 
         .store-name {
+            font-size: 1rem;
             font-weight: 600;
-            font-size: 0.95rem;
-            color: #222;
         }
 
-        .store-addr {
-            font-size: 0.8rem;
-            color: #888;
-            margin-top: 2px;
+        .visited .store-name {
+            color: var(--starbucks-green);
+            text-decoration: line-through;
+            opacity: 0.8;
+        }
+
+        #map {
+            flex: 1;
+            background-color: var(--map-bg);
+        }
+
+        .custom-tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #000;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            padding: 8px 12px;
+            font-family: 'Pretendard';
+        }
+
+        .confetti {
+            position: absolute;
+            pointer-events: none;
+            z-index: 9999;
+            width: 8px;
+            height: 8px;
         }
     </style>
 </head>
 
 <body>
 
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
-
-    <div id="controls">
-        <div class="header-row">
-            <button id="back-btn" onclick="resetToSeoul()">←</button>
-            <h2 id="view-title">서울시 전체</h2>
-        </div>
-
-        <div class="stats-summary">
-            총 매장: <span id="count-total" style="font-weight:bold; color:#333;">0</span>개
-            (<span id="count-checked" style="color:#00704A; font-weight:bold;">0</span> 방문)
-        </div>
-
-        <div class="store-container">
-            <ul id="store-list"></ul>
-        </div>
-
-        <!-- Footer for Contact & Reset -->
-        <div
-            style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 0.85rem; color: #666;">
-            <div>
-                <a href="mailto:your_email@example.com"
-                    style="color: #666; text-decoration: none; margin-right: 15px;">📧 문의하기</a>
-                <span style="cursor: pointer; color: #999;" onclick="resetUserData()">🔄 초기화</span>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <div class="header-top">
+                <div class="app-title">StarMap</div>
+                <div class="header-right">
+                    <button id="gu-reset-btn" onclick="resetGuData()">구 초기화</button>
+                    <button id="header-back-btn" onclick="resetToSeoul()">← 뒤로가기</button>
+                    <div class="header-actions" id="global-actions">
+                        <span onclick="alert('kk30100@naver.com')">문의</span>
+                        <span style="opacity:0.3">|</span>
+                        <span onclick="resetUserData()">초기화</span>
+                    </div>
+                </div>
             </div>
-            <div style="margin-top: 5px; font-size: 0.7rem; color: #aaa;">
-                방문 기록은 이 브라우저에만 저장됩니다.
+
+            <div class="stats-container">
+                <div>
+                    <div class="stat-label">Total Stores</div>
+                    <div class="stat-value" id="count-total">0</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="stat-label">Visited</div>
+                    <div class="stat-value highlight" id="count-checked">0</div>
+                </div>
             </div>
         </div>
+
+        <div class="list-container">
+            <ul id="item-list"></ul>
+        </div>
+
+        <div class="sidebar-footer">
+            <div>김대훈: kk30100@naver.com</div>
+            <div>신동희: formation442@icloud.com</div>
+        </div>
     </div>
+
+    <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- [1] 상태 및 변수 ---
-        const map = L.map('map', {
-            zoomControl: false,
-            wheelPxPerZoomLevel: 120, // 스크롤 줌 속도 절반
-            zoomSnap: 0.5,
-            zoomDelta: 0.5,
-            renderer: L.svg({ padding: 3 }) // 렌더링 범위를 넓혀서 애니메이션 중 잘림 방지
-        }).setView([37.5665, 126.9780], 11);
+        const map = L.map('map', { zoomControl: false, center: [37.5665, 126.9780], zoom: 11, zoomSnap: 0.1 });
+
+        const getColor = (r, isNoStore = false) => {
+            if (isNoStore) return '#004d33';
+            if (r >= 1) return '#004d33';
+            if (r > 0.7) return '#00704a';
+            if (r > 0.4) return '#2d9165';
+            if (r > 0.1) return '#68ba93';
+            return '#ffffff';
+        }
 
         let guLayer, dongLayer;
-        let guStatsMap = {};
+        let visitedStores = new Set(JSON.parse(localStorage.getItem('visited_stores') || '[]'));
+
+        // Data Containers
+        let allStoresData = [];
+        let storesByGu = {};
+        let guStats = {};
         let currentLevel = 'GU';
         let currentGu = null;
 
-        // --- [UUID & Logging] ---
-        // 1. UUID Generation or Retrieval
-        let userUUID = localStorage.getItem('user_uuid');
-        if (!userUUID) {
-            userUUID = crypto.randomUUID();
-            localStorage.setItem('user_uuid', userUUID);
+        Promise.all([
+            fetch('/static/seoul_gu_map.geojson').then(r => r.json()),
+            fetch('/static/seoul_map.geojson').then(r => r.json()),
+            fetch('/api/dong-stats').then(r => r.json())
+        ]).then(([guGeo, dongGeo, stores]) => {
+            allStoresData = stores;
+            processData();
+
+            dongLayer = L.geoJSON(dongGeo, {
+                style: { opacity: 0, fillOpacity: 0, interactive: false },
+                onEachFeature: (f, l) => {
+                    l.bindTooltip(`<b>${f.properties.adm_nm.split(' ').pop()}</b>`, { className: 'custom-tooltip', sticky: true });
+                }
+            }).addTo(map);
+
+            guLayer = L.geoJSON(guGeo, {
+                style: styleGuMode,
+                onEachFeature: (f, l) => {
+                    const name = f.properties.name || f.properties.SIG_KOR_NM;
+                    l.bindTooltip(`<b>${name}</b>`, { className: 'custom-tooltip', sticky: true });
+                    l.on('click', (e) => drillDownToGu(name, e.target.getBounds()));
+                    l.on('mouseover', () => { if (currentLevel === 'GU') l.setStyle({ weight: 3 }); });
+                    l.on('mouseout', () => { if (currentLevel === 'GU') l.setStyle(styleGuMode(f)); });
+                }
+            }).addTo(map);
+
+            renderGuList();
+        });
+
+        function processData() {
+            storesByGu = {};
+            guStats = {};
+
+            allStoresData.forEach(s => {
+                if (!storesByGu[s.gu]) storesByGu[s.gu] = [];
+                storesByGu[s.gu].push(s);
+
+                if (!guStats[s.gu]) guStats[s.gu] = { t: 0, v: 0 };
+                guStats[s.gu].t++;
+                if (visitedStores.has(s.store_name)) guStats[s.gu].v++;
+            });
         }
-
-        // 2. Logging Function
-        const logAction = (action, target) => {
-            fetch('/api/log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uuid: userUUID, action: action, target: target })
-            }).catch(err => console.error("Log failed:", err));
-        };
-
-        // 3. Visit State (LocalStorage)
-        // Load visits from Storage instead of Server (for anonymous)
-        let visitedStores = new Set(JSON.parse(localStorage.getItem('visited_stores') || '[]'));
-
-        // Reset Function
-        const resetUserData = () => {
-            if (confirm("모든 방문 기록을 초기화 하시겠습니까?")) {
-                localStorage.removeItem('visited_stores');
-                visitedStores.clear();
-                alert("초기화 되었습니다.");
-                location.reload();
-            }
-        };
-
-        // Log Entry
-        window.onload = () => {
-            logAction('PAGE_VIEW', 'Main');
-        };
-
-        // --- [2] 유틸리티 함수 ---
-        const getColor = (ratio) => {
-            return ratio >= 1.0 ? '#00441b' :
-                ratio >= 0.8 ? '#006d2c' :
-                    ratio >= 0.6 ? '#238b45' :
-                        ratio >= 0.4 ? '#41ab5d' :
-                            ratio >= 0.2 ? '#74c476' :
-                                ratio > 0 ? '#a1d99b' :
-                                    '#ffffff';
-        };
-
-        // Normalize dong name: remove numbers, dots, and "가" suffix globally
-        // Examples: "월계1동" -> "월계동", "상계3·4동" -> "상계동"
-        // Normalize dong name: NOW DISABLED for granular mapping
-        // We want "상계1동" to remain "상계1동" to match the DB
-        const normalizeDongName = (name) => {
-            return name; // Identity function
-            // return name.replace(/[0-9·.]+/g, '').replace(/가$/, '');
-        };
-
-        // Gu Layer Style (Level 1)
-        const styleGuMode = (feature) => {
-            // seoul_gu_map.geojson uses 'name' property for Gu name
-            const guName = feature.properties.name || feature.properties.SIG_KOR_NM;
-            const ratio = guStatsMap[guName] || 0;
-            return {
-                fillColor: getColor(ratio),
-                weight: 1.5, // 구 경계선 두께
-                opacity: 1,
-                color: 'black', // 구 경계선 색상 (검정색으로 변경)
-                fillOpacity: 0.75
-            };
-        };
-
-        // Dong Layer Style (Level 2)
-        const styleDongMode = (feature) => {
-            // seoul_map.geojson uses 'sggnm' property
-            if (feature.properties.sggnm !== currentGu) {
-                // Use opacity 0 instead of stroke:false/fill:false
-                // This allows setStyle to properly show the feature later
-                return {
-                    stroke: true,
-                    fill: true,
-                    weight: 0,
-                    opacity: 0,
-                    fillOpacity: 0,
-                    interactive: false
-                };
-            }
-
-            const ratio = (feature.properties.visitRatio !== undefined) ? feature.properties.visitRatio : 0;
-            return {
-                fillColor: getColor(ratio),
-                weight: 1, // 동 경계선 두께
-                opacity: 1,
-                color: 'black', // 동 경계선 색상 (검은색)
-                fillOpacity: 0.85,
-                interactive: true
-            };
-        };
-
-        // --- [3] 핵심 로직 ---
 
         function resetToSeoul() {
             currentLevel = 'GU';
             currentGu = null;
-            document.getElementById('back-btn').style.display = 'none';
-            document.getElementById('view-title').textContent = '서울시 전체';
+            document.getElementById('header-back-btn').style.display = 'none';
+            document.getElementById('gu-reset-btn').style.display = 'none';
+            document.getElementById('global-actions').style.display = 'flex';
 
-            // 1. Clear list immediately for instant feedback & performance
-            document.getElementById('store-list').innerHTML = '';
-            document.getElementById('count-total').textContent = '0';
-            document.getElementById('count-checked').textContent = '0';
+            if (guLayer) map.fitBounds(guLayer.getBounds(), { padding: [20, 20], duration: 0.8 });
+            else map.flyTo([37.5665, 126.9780], 11);
 
-            // 2. Faster animation (1.5s -> 1.0s)
-            map.flyTo([37.5665, 126.9780], 11, { duration: 1.0 });
+            guLayer.setStyle(styleGuMode);
+            guLayer.eachLayer(l => l.getElement().style.pointerEvents = 'auto');
+            dongLayer.setStyle({ opacity: 0, fillOpacity: 0, interactive: false });
 
-            // Toggle Layers
-            if (dongLayer) map.removeLayer(dongLayer);
-            if (guLayer) guLayer.addTo(map);
-
-            // Refresh Gu Styles
-            if (guLayer) {
-                guLayer.eachLayer(layer => {
-                    layer.setStyle(styleGuMode(layer.feature));
-                    layer.unbindTooltip();
-                    const guName = layer.feature.properties.name || layer.feature.properties.SIG_KOR_NM;
-                    const ratio = Math.round((guStatsMap[guName] || 0) * 100);
-                    layer.bindTooltip(`<b>${guName}</b><br>정복률: ${ratio}%`, {
-                        sticky: true,
-                        direction: 'center',
-                        className: 'gu-tooltip'
-                    });
-                });
-            }
-
-            // 3. Defer loading the massive list until animation ends
-            map.once('moveend', () => {
-                loadStoreList('total');
-            });
+            renderGuList();
         }
 
         function drillDownToGu(guName, bounds) {
             currentLevel = 'DONG';
             currentGu = guName;
+            document.getElementById('header-back-btn').style.display = 'block';
+            document.getElementById('gu-reset-btn').style.display = 'block';
+            document.getElementById('global-actions').style.display = 'none';
 
-            logAction('CLICK_GU', guName); // Log Gu Click
+            map.flyToBounds(bounds, { padding: [50, 50], duration: 0.8 });
+            updateDongLayer(guName);
+        }
 
-            document.getElementById('back-btn').style.display = 'block';
-            document.getElementById('view-title').textContent = guName;
+        function updateDongLayer(guName) {
+            const stores = storesByGu[guName] || [];
+            const dongStats = {};
 
-            map.flyToBounds(bounds, {
-                padding: [100, 100],
-                maxZoom: 13.5,
-                duration: 1.2
+            stores.forEach(s => {
+                if (!dongStats[s.dong]) dongStats[s.dong] = { t: 0, v: 0 };
+                dongStats[s.dong].t++;
+                if (visitedStores.has(s.store_name)) dongStats[s.dong].v++;
             });
 
-            // 1. Switch Layers Immediately (Prevent map disappearing)
-            if (guLayer) map.removeLayer(guLayer);
+            guLayer.setStyle({ opacity: 0, fillOpacity: 0, interactive: false });
 
-            if (dongLayer) {
-                dongLayer.addTo(map);
-                // Apply base style immediately so boundaries appear
-                dongLayer.eachLayer(layer => {
-                    if (layer.feature.properties.sggnm === currentGu) {
-                        layer.setStyle(styleDongMode(layer.feature));
-                        // Temporary tooltip until stats load
-                        const dName = layer.feature.properties.adm_nm.split(' ').pop();
-                        layer.unbindTooltip();
-                        layer.bindTooltip(`<b>${dName}</b>`, { sticky: true });
-                    } else {
-                        layer.setStyle(styleDongMode(layer.feature)); // Hide
-                    }
-                });
-            }
+            dongLayer.eachLayer(layer => {
+                if (layer.feature.properties.sggnm === guName) {
+                    const dName = layer.feature.properties.adm_nm.split(' ').pop();
+                    const stat = dongStats[dName] || { v: 0, t: 0 };
 
-            // 2. Fetch Stats & Refine Styles
-            fetch(`/api/dong-stats?gu=${guName}`)
-                .then(res => res.json())
-                .then(stores => {
-                    // Normalize function is now global
+                    const isNoStore = (stat.t === 0);
+                    const ratio = stat.t ? stat.v / stat.t : 0;
 
-
-                    const dongStats = {};
-                    stores.forEach(s => {
-                        if (!dongStats[s.dong]) dongStats[s.dong] = { total: 0, visited: 0 };
-                        dongStats[s.dong].total++;
-                        if (s.visited) dongStats[s.dong].visited++;
+                    layer.setStyle({
+                        fillColor: getColor(ratio, isNoStore),
+                        weight: 1,
+                        color: 'black',
+                        opacity: 1,
+                        fillOpacity: 1,
+                        interactive: true
                     });
-
-                    if (dongLayer) {
-                        dongLayer.eachLayer(layer => {
-                            const props = layer.feature.properties;
-
-                            if (props.sggnm === guName) {
-                                const rawDongName = props.adm_nm.split(' ').pop();
-                                const normalizedDongName = normalizeDongName(rawDongName);
-                                const stat = dongStats[normalizedDongName] || { visited: 0, total: 0 };
-
-                                // Calculate ratio: if no stores, mark as 100% (darkest = complete)
-                                let ratio = 0;
-                                if (stat.total === 0) ratio = 1.0;
-                                else ratio = stat.visited / stat.total;
-
-                                layer.feature.properties.visitRatio = ratio;
-                                layer.setStyle(styleDongMode(layer.feature));
-
-                                layer.unbindTooltip();
-                                const statText = stat.total === 0 ? "매장 없음" : `${stat.visited}/${stat.total}`;
-                                layer.bindTooltip(`<b>${rawDongName}</b><br>${statText} (${Math.round(ratio * 100)}%)`, { sticky: true });
-                            }
-                        });
-                    }
-                    updateStoreList(stores);
-                });
+                } else {
+                    layer.setStyle({ opacity: 0, fillOpacity: 0, interactive: false });
+                }
+            });
+            renderStoreList(stores, dongStats);
         }
 
-        function updateStoreList(storeData) {
-            const list = document.getElementById('store-list');
-            list.innerHTML = '';
+        function renderGuList() {
+            const list = document.getElementById('item-list'); list.innerHTML = '';
+            let total = 0;
+            const sortedGus = Object.keys(guStats).sort();
 
-            // Fragment for performance
-            const fragment = document.createDocumentFragment();
-
-            storeData.forEach(store => {
-                const li = document.createElement('li');
-                // Check if visited from LocalStorage
-                if (visitedStores.has(store.store_name)) {
-                    li.classList.add('visited');
-                }
-                li.onclick = () => toggleVisit(store.store_name, store.lat, store.lng, li);
-                li.innerHTML = `
-                    <strong>${store.store_name}</strong>
-                    <div class="store-addr">${store.dong} | ${store.address}</div>
-                `;
-                fragment.appendChild(li);
+            sortedGus.forEach(gu => {
+                const s = guStats[gu];
+                total += s.t;
+                const li = document.createElement('li'); li.className = 'gu-item';
+                li.innerHTML = `<span style="font-weight:600">${gu}</span><span class="gu-count">${s.t}</span>`;
+                li.onclick = () => {
+                    guLayer.eachLayer(l => {
+                        const name = l.feature.properties.name || l.feature.properties.SIG_KOR_NM;
+                        if (name === gu) drillDownToGu(gu, l.getBounds());
+                    });
+                };
+                list.appendChild(li);
             });
 
-            list.appendChild(fragment);
-            updateCounts();
+            document.getElementById('count-total').textContent = total;
+            document.getElementById('count-checked').textContent = visitedStores.size;
         }
 
-        function updateCheckedCount() {
-            const checkboxes = document.querySelectorAll('#store-list input[type="checkbox"]');
-            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-            document.getElementById('count-checked').textContent = checkedCount;
+        function renderStoreList(stores, dongStats) {
+            const list = document.getElementById('item-list'); list.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            let visitedInGu = 0;
+
+            stores.forEach(s => {
+                const li = document.createElement('li');
+                const isVisited = visitedStores.has(s.store_name);
+                if (isVisited) visitedInGu++;
+
+                li.className = `store-item ${isVisited ? 'visited' : ''}`;
+                li.onclick = () => toggleVisit(s.store_name, s.dong, s.gu, li);
+                li.innerHTML = `
+                    <div class="checkbox-wrapper"><div class="custom-checkbox"></div></div>
+                    <div class="store-info"><div class="store-dong">${s.dong}</div><div class="store-name">${s.store_name}</div></div>
+                `;
+                frag.appendChild(li);
+            });
+            list.appendChild(frag);
+
+            document.getElementById('count-total').textContent = stores.length;
+            document.getElementById('count-checked').textContent = visitedInGu;
         }
 
-        async function toggleVisit(storeName, lat, lng, liElement) {
-            // New logic: Toggle in LocalStorage
-
+        function toggleVisit(storeName, dongName, guName, li) {
             const isVisited = visitedStores.has(storeName);
-            const action = isVisited ? 'uncheck' : 'check';
 
-            if (!isVisited) {
-                visitedStores.add(storeName);
-                if (liElement) liElement.classList.add('visited');
-                // createConfetti(lat, lng); // Assuming createConfetti is defined elsewhere or will be added
-            } else {
+            const storesInDong = storesByGu[guName].filter(s => s.dong === dongName);
+            const totalInDong = storesInDong.length;
+            const visitedInDong = storesInDong.filter(s => visitedStores.has(s.store_name)).length;
+            const wasDongFull = totalInDong > 0 && visitedInDong === totalInDong;
+
+            const totalInGu = guStats[guName].t;
+            const visitedInGu = guStats[guName].v;
+            const wasGuFull = totalInGu > 0 && visitedInGu === totalInGu;
+
+            if (isVisited) {
                 visitedStores.delete(storeName);
-                if (liElement) liElement.classList.remove('visited');
+                li.classList.remove('visited');
+                guStats[guName].v--;
+            } else {
+                visitedStores.add(storeName);
+                li.classList.add('visited');
+                guStats[guName].v++;
             }
 
-            // Save to LocalStorage
             localStorage.setItem('visited_stores', JSON.stringify([...visitedStores]));
 
-            // Log to Server
-            logAction(action.toUpperCase(), storeName);
+            const newVisitedInDong = isVisited ? visitedInDong - 1 : visitedInDong + 1;
+            const isDongFull = totalInDong > 0 && newVisitedInDong === totalInDong;
 
-            // Update UI Counters immediately
-            updateCounts();
+            const newVisitedInGu = isVisited ? visitedInGu - 1 : visitedInGu + 1;
+            const isGuFull = totalInGu > 0 && newVisitedInGu === totalInGu;
+
+            if (!wasGuFull && isGuFull) {
+                createFireworks();
+            } else if (!wasDongFull && isDongFull) {
+                createConfetti(15);
+            }
+
+            if (currentLevel === 'GU') {
+                document.getElementById('count-checked').textContent = visitedStores.size;
+            } else {
+                let currentVal = parseInt(document.getElementById('count-checked').textContent) || 0;
+                document.getElementById('count-checked').textContent = currentVal + (isVisited ? -1 : 1);
+            }
+
+            updateDongLayer(guName);
         }
 
-        function updateCounts() {
-            // Re-calc counts based on visible stores in list
-            const stores = document.querySelectorAll('#store-list li');
-            const total = stores.length;
-            let checked = 0;
-            stores.forEach(li => {
-                if (visitedStores.has(li.querySelector('strong').textContent)) {
-                    li.classList.add('visited'); // Ensure class is correct
-                    checked++;
-                }
-            });
-            document.getElementById('count-total').textContent = total;
-            document.getElementById('count-checked').textContent = checked;
+        function createConfetti(amount = 15) {
+            const colors = ['#00704a', '#d4e9e2', '#eac784', '#ff6b6b'];
+            for (let i = 0; i < amount; i++) {
+                const el = document.createElement('div'); el.className = 'confetti';
+                el.style.backgroundColor = colors[Math.floor(Math.random() * 4)];
+                el.style.left = Math.random() * 100 + 'vw'; el.style.top = '-10px';
+                document.body.appendChild(el);
+                const anim = el.animate([{ transform: 'translate(0,0)' }, { transform: `translate(${Math.random() * 100 - 50}px, 100vh) rotate(720deg)` }], { duration: 1000 + Math.random() * 1000 });
+                anim.onfinish = () => el.remove();
+            }
         }
 
+        function createFireworks() {
+            const fireBurst = (delay) => {
+                setTimeout(() => {
+                    // Confetti Rain
+                    createConfetti(40);
 
+                    // Powerful Burst
+                    const particleCount = 80;
+                    const colors = ['#ff0000', '#ffd700', '#ffffff', '#00ff00', '#00704a', '#00ffff', '#ff00ff'];
+                    // Pick ONE color for the entire burst
+                    const burstColor = colors[Math.floor(Math.random() * colors.length)];
 
-        function loadStoreList(gu) {
-            let url = '/api/dong-stats';
-            if (gu !== 'total') url += `?gu=${gu}`;
+                    const startX = 50 + (Math.random() * 20 - 10);
+                    const startY = 50 + (Math.random() * 20 - 10);
 
-            fetch(url).then(res => res.json()).then(data => updateStoreList(data));
+                    for (let i = 0; i < particleCount; i++) {
+                        const el = document.createElement('div');
+                        el.className = 'confetti';
+
+                        el.style.backgroundColor = burstColor;
+                        el.style.boxShadow = `0 0 6px 1px ${burstColor}`;
+                        el.style.borderRadius = '50%';
+                        el.style.width = (Math.random() * 6 + 4) + 'px';
+                        el.style.height = el.style.width;
+                        el.style.left = startX + 'vw';
+                        el.style.top = startY + 'vh';
+
+                        document.body.appendChild(el);
+
+                        const angle = Math.random() * Math.PI * 2;
+                        const velocity = 200 + Math.random() * 500;
+                        const tx = Math.cos(angle) * velocity;
+                        const ty = Math.sin(angle) * velocity;
+
+                        const anim = el.animate([
+                            { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                            { transform: `translate(${tx * 0.5}px, ${ty * 0.5}px) scale(0.8)`, opacity: 0.8, offset: 0.4 },
+                            { transform: `translate(${tx}px, ${ty + 200}px) scale(0)`, opacity: 0 }
+                        ], {
+                            duration: 1200 + Math.random() * 800,
+                            easing: 'cubic-bezier(0, .9, .57, 1)'
+                        });
+
+                        anim.onfinish = () => el.remove();
+                    }
+                }, delay);
+            };
+
+            for (let k = 0; k < 5; k++) {
+                fireBurst(k * 500);
+            }
         }
 
-        // --- [4] 초기화 ---
-        Promise.all([
-            fetch('/static/seoul_gu_map.geojson').then(r => r.json()),
-            fetch('/static/seoul_map.geojson').then(r => r.json()),
-            fetch('/api/gu-stats').then(r => r.json())
-        ]).then(([guGeo, dongGeo, guStats]) => {
+        function styleGuMode(f) {
+            const name = f.properties.name || f.properties.SIG_KOR_NM;
+            const s = guStats[name] || { t: 0, v: 0 };
+            return { fillColor: getColor(s.t ? s.v / s.t : 0), weight: 1.5, color: 'black', opacity: 1, fillOpacity: 1 };
+        }
 
-            // 1. Init stats
-            guStats.forEach(s => {
-                guStatsMap[s.gu] = s.total_stores ? s.visited_stores / s.total_stores : 0;
-            });
+        function resetUserData() {
+            if (confirm("모든 기록을 초기화하시겠습니까?")) { localStorage.removeItem('visited_stores'); location.reload(); }
+        }
 
-            // 2. Create Dong Layer (Initially Hidden, created first so we can refer to it)
-            dongLayer = L.geoJSON(dongGeo, {
-                style: styleDongMode,
-                onEachFeature: (feature, layer) => {
-                    layer.on('mouseover', function () {
-                        if (currentLevel === 'DONG' && feature.properties.sggnm === currentGu) {
-                            this.setStyle({ weight: 2, color: 'black', fillOpacity: 0.95 });
-                        }
-                    });
-                    layer.on('mouseout', function () {
-                        if (currentLevel === 'DONG' && feature.properties.sggnm === currentGu) {
-                            this.setStyle(styleDongMode(feature));
-                        }
-                    });
+        function resetGuData() {
+            if (!currentGu || !confirm(`${currentGu}의 기록을 초기화하시겠습니까?`)) return;
+
+            const stores = storesByGu[currentGu] || [];
+            stores.forEach(s => {
+                if (visitedStores.has(s.store_name)) {
+                    visitedStores.delete(s.store_name);
+                    guStats[currentGu].v--;
                 }
             });
+            localStorage.setItem('visited_stores', JSON.stringify([...visitedStores]));
 
-            // 3. Create Gu Layer (Visible)
-            guLayer = L.geoJSON(guGeo, {
-                style: styleGuMode,
-                onEachFeature: (feature, layer) => {
-                    const guName = feature.properties.name || feature.properties.SIG_KOR_NM;
-
-                    const ratio = Math.round((guStatsMap[guName] || 0) * 100);
-                    layer.bindTooltip(`<b>${guName}</b><br>정복률: ${ratio}%`, {
-                        sticky: true,
-                        direction: 'center',
-                        className: 'gu-tooltip'
-                    });
-
-                    layer.on('mouseover', function () {
-                        this.setStyle({ weight: 3, color: 'white', fillOpacity: 0.9 });
-                    });
-                    layer.on('mouseout', function () {
-                        this.setStyle(styleGuMode(feature));
-                    });
-                    layer.on('click', function (e) {
-                        drillDownToGu(guName, e.target.getBounds());
-                    });
-                }
-            }).addTo(map);
-
-            loadStoreList('total');
-
-        }).catch(err => {
-            console.error(err);
-            alert('데이터 로드 실패: ' + err.message);
-        });
-
+            updateDongLayer(currentGu);
+            document.getElementById('count-checked').textContent = 0;
+        }
     </script>
 </body>
 
