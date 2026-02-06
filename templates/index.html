@@ -234,6 +234,28 @@
         #map {
             flex: 1;
             background-color: var(--map-bg);
+            position: relative;
+            /* Ensure stacking context */
+        }
+
+        #map::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            /* Align to right edge */
+            bottom: 0;
+            width: 100%;
+            /* Use full width so logo isn't clipped if tall */
+            background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png');
+            background-repeat: no-repeat;
+            background-position: 350% center;
+            /* Push horizontally past the right edge */
+            background-size: auto 140%;
+            /* Fit height (80% for aesthetics, or 100% for full bleed) */
+            opacity: 0.51;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .custom-tooltip {
