@@ -1,0 +1,591 @@
+/* ============================================================================
+   🎓 LEARNING: CSS 스타일링 (기존 Flask 버전과 동일한 디자인)
+   ============================================================================ */
+
+:root {
+  --starbucks-green: #00704a;
+  --text-primary: #1e3932;
+  --bg-light: #f7f7f7;
+  --map-bg: #3e2723;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
+}
+
+/* 레이아웃 */
+.app-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 사이드바 */
+.sidebar {
+  width: 380px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+}
+
+.sidebar-header {
+  padding: 24px 20px 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.app-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--starbucks-green);
+}
+
+.back-btn {
+  background: var(--starbucks-green);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.back-btn:hover {
+  opacity: 0.9;
+}
+
+/* 통계 박스 */
+.stats-container {
+  background: var(--bg-light);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #777;
+  display: block;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.stat-value.highlight {
+  color: var(--starbucks-green);
+}
+
+/* 리스트 */
+.list-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.item-list {
+  list-style: none;
+}
+
+.gu-item,
+.store-item {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.gu-item:hover,
+.store-item:hover {
+  background-color: var(--bg-light);
+}
+
+.gu-count {
+  background: #eee;
+  color: #666;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* 매장 아이템 - 체크박스 스타일 */
+.store-item {
+  justify-content: flex-start;
+}
+
+.checkbox-wrapper {
+  margin-right: 15px;
+}
+
+.custom-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+  transition: all 0.2s;
+}
+
+.store-item.visited .custom-checkbox {
+  background: var(--starbucks-green);
+  border-color: var(--starbucks-green);
+}
+
+.store-info {
+  flex: 1;
+}
+
+.store-dong {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.store-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.store-item.visited .store-name {
+  color: var(--starbucks-green);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+/* 푸터 */
+.sidebar-footer {
+  padding: 15px 20px;
+  background: #fdfdfd;
+  border-top: 1px solid #eee;
+  font-size: 0.75rem;
+  color: #aaa;
+  line-height: 1.5;
+}
+
+/* 지도 영역 - 서울 모양만 떠있게 */
+.map-container {
+  flex: 1;
+  background-color: #3e2723;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 스타벅스 로고 워터마크 */
+.map-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/Starbucks_Corporation_Logo_2011.svg/1200px-Starbucks_Corporation_Logo_2011.svg.png');
+  background-repeat: no-repeat;
+  background-position: 350% center;
+  background-size: auto 140%;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 지도 뷰 - 프레임 없이 배경과 일체화 */
+.map-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: transparent !important;
+}
+
+/* Leaflet 배경 투명하게 */
+.leaflet-container {
+  background: transparent !important;
+}
+
+/* 플로팅 버튼 */
+.map-floating-buttons {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.floating-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.floating-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.info-btn {
+  background: white;
+  color: var(--starbucks-green);
+  font-weight: 900;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+/* 별 아이콘 초록색 */
+.profile-btn {
+  background: white;
+  color: var(--starbucks-green);
+  font-size: 24px;
+  font-weight: bold;
+  padding: 0;
+  padding-bottom: 3px;
+  /* 시각적 중앙 보정 */
+  line-height: 1;
+}
+
+/* Leaflet 툴팁 커스텀 */
+.leaflet-tooltip {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-weight: 600;
+}
+
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before {
+  border-left-color: rgba(0, 0, 0, 0.8);
+  border-right-color: rgba(0, 0, 0, 0.8);
+}
+
+/* 로딩 화면 */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 1.5rem;
+  color: var(--starbucks-green);
+}
+
+/* 동 그룹 헤더 */
+.dong-group-header {
+  background: var(--bg-light);
+  padding: 10px 24px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #555;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* 헤더 액션 버튼들 */
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.header-actions span {
+  cursor: pointer;
+  color: #888;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.header-actions span:hover {
+  color: var(--starbucks-green);
+}
+
+/* 초기화 버튼 */
+.reset-btn {
+  background: #d62828;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.reset-btn:hover {
+  opacity: 0.9;
+}
+
+/* 푸터 링크 */
+.sidebar-footer a {
+  color: var(--starbucks-green);
+  text-decoration: none;
+}
+
+.sidebar-footer a:hover {
+  text-decoration: underline;
+}
+
+/* 모달 오버레이 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+/* 모달 콘텐츠 */
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h2 {
+  color: var(--starbucks-green);
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.modal-content h3 {
+  color: var(--text-primary);
+  margin: 20px 0 10px;
+  font-size: 1rem;
+}
+
+.modal-content ul {
+  list-style: none;
+  padding: 0;
+}
+
+.modal-content li {
+  padding: 8px 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-content p {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 문의 이메일 텍스트 스타일 */
+.contact-email {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--starbucks-green);
+  background: var(--bg-light);
+  padding: 10px 15px;
+  border-radius: 8px;
+  user-select: all;
+}
+
+.modal-close-btn {
+  background: var(--starbucks-green);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+  margin-top: 20px;
+  transition: opacity 0.2s;
+}
+
+.modal-close-btn:hover {
+  opacity: 0.9;
+}
+
+/* 프로필 모달 */
+.profile-modal {
+  max-width: 450px;
+}
+
+.welcome-text {
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.profile-form {
+  margin: 20px 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+/* 칩 버튼 (성별/나이대 선택) */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  border-color: var(--starbucks-green);
+}
+
+.chip.active {
+  background: var(--starbucks-green);
+  border-color: var(--starbucks-green);
+  color: white;
+}
+
+/* 모달 버튼 그룹 */
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+  border: none;
+}
+
+.modal-btn.primary {
+  background: var(--starbucks-green);
+  color: white;
+}
+
+.modal-btn.secondary {
+  background: #eee;
+  color: #666;
+}
+
+.modal-btn:hover {
+  opacity: 0.9;
+}
+
+/* ========================================
+   축하 효과: 꽃가루 (Confetti)
+   ======================================== */
+.confetti {
+  position: fixed;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  z-index: 9999;
+  pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   축하 효과: 폭죽 (Firework)
+   ======================================== */
+.firework {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffeb3b;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.firework-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  animation: firework-explode 1s ease-out forwards;
+}
+
+@keyframes firework-explode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform:
+      translate(calc(cos(var(--angle)) * var(--distance)),
+        calc(sin(var(--angle)) * var(--distance))) scale(0);
+    opacity: 0;
+  }
+}

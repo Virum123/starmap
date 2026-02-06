@@ -8,3 +8,20 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+starmap-modern/backend/venv/
+
+# Node.js
+node_modules/
+starmap-modern/frontend/node_modules/
+starmap-modern/frontend/dist/
+
+# Environment variables
+.env
+
+# MacOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

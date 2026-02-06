@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StarMap Seoul - React Edition</title>
+
+    <!-- 
+    ============================================================================
+    🎓 LEARNING: index.html in React (Vite)
+    ============================================================================
+    
+    📌 순수 HTML 프로젝트와의 차이
+    ────────────────────────────────────────────────────────────────────────────
+    순수 HTML:
+    - <body> 안에 모든 콘텐츠가 직접 들어있음
+    - <script src="app.js">로 동작 추가
+    
+    React:
+    - <body>에는 빈 <div id="root">만 있음
+    - React가 이 div 안에 콘텐츠를 "주입"함
+    - 번들러(Vite)가 JavaScript를 자동으로 연결해줌
+    
+    📌 왜 이렇게?
+    - React는 JavaScript로 화면을 그림 (가상 DOM)
+    - HTML은 그냥 "도화지" 역할만 함
+    ============================================================================
+  -->
+
+    <!-- Google Fonts (Pretendard) -->
+    <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+</head>
+
+<body>
+    <!-- 
+    📌 이 div가 React 앱이 렌더링되는 곳
+    - main.jsx에서 document.getElementById('root')로 찾아서 사용
+    - 처음에는 비어있지만, React가 실행되면 내용이 채워짐
+  -->
+    <div id="root"></div>
+
+    <!-- 
+    📌 Vite가 자동으로 추가해주는 스크립트
+    - type="module": ES6 모듈 문법 사용
+    - 개발 서버에서는 HMR(Hot Module Replacement) 지원
+  -->
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

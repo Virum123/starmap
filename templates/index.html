@@ -274,6 +274,209 @@
             width: 8px;
             height: 8px;
         }
+
+        /* Form Styles for Welcome Modal */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .chip-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: #555;
+            transition: 0.2s;
+            background: #fff;
+        }
+
+        .chip:hover {
+            background: #f0f0f0;
+        }
+
+        .chip.selected {
+            background: var(--starbucks-green);
+            color: white;
+            border-color: var(--starbucks-green);
+            key-shadow: 0 2px 5px rgba(0, 112, 74, 0.3);
+            font-weight: 600;
+        }
+
+        .primary-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: var(--starbucks-green);
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 1;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        .primary-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .primary-btn:not(:disabled):hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 112, 74, 0.2);
+        }
+
+        /* Info Button & Modal */
+        #info-btn,
+        #profile-btn {
+            position: absolute;
+            left: 20px;
+            z-index: 1000;
+            /* Above map */
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--starbucks-green);
+            font-size: 1.2rem;
+            border: 2px solid var(--starbucks-green);
+            transition: transform 0.2s;
+        }
+
+        #info-btn {
+            top: 20px;
+        }
+
+        #profile-btn {
+            top: 70px;
+            font-size: 1.4rem;
+        }
+
+        #info-btn:hover,
+        #profile-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+            animation: modalPop 0.3s ease-out;
+        }
+
+        @keyframes modalPop {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .guide-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--starbucks-green);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .guide-section {
+            margin-bottom: 15px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .guide-section strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .guide-note {
+            background: #f0fdf4;
+            padding: 10px;
+            border-radius: 8px;
+            color: #1e3932;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            border-left: 3px solid var(--starbucks-green);
+        }
+
+        .guide-controls {
+            display: grid;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .footer-note {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
     </style>
 
     <!-- Google Tag Manager -->
@@ -293,6 +496,73 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TNMFBPBD" height="0" width="0"
             style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+
+    <!-- Welcome Modal (First Visit) -->
+    <div id="welcome-modal" class="modal-overlay" style="z-index: 2001;">
+        <div class="modal-content">
+            <div class="guide-title">환영합니다! 👋</div>
+            <p style="text-align:center; color:#555; margin-bottom:25px; line-height:1.5; font-size:0.95rem;">
+                StarMap Seoul에 오신 것을 환영합니다.<br>
+                더 나은 서비스 제공을 위해 간단한 정보를 입력해주세요.
+            </p>
+
+            <div class="input-group">
+                <label>연령대</label>
+                <div class="chip-container" id="age-selector">
+                    <div class="chip" onclick="selectChip('age', '10대')">10대</div>
+                    <div class="chip" onclick="selectChip('age', '20대')">20대</div>
+                    <div class="chip" onclick="selectChip('age', '30대')">30대</div>
+                    <div class="chip" onclick="selectChip('age', '40대')">40대</div>
+                    <div class="chip" onclick="selectChip('age', '50대')">50대</div>
+                    <div class="chip" onclick="selectChip('age', '60대+')">60대+</div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>성별</label>
+                <div class="chip-container" id="gender-selector">
+                    <div class="chip" onclick="selectChip('gender', '남성')">남성</div>
+                    <div class="chip" onclick="selectChip('gender', '여성')">여성</div>
+                </div>
+            </div>
+
+            <button id="start-btn" class="primary-btn" disabled onclick="submitUserInfo()">입력 완료 및 시작하기</button>
+        </div>
+    </div>
+
+    <div id="info-modal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal(event, true)">&times;</span>
+            <div class="guide-title">서울 스타벅스 도장깨기</div>
+
+            <div class="guide-section">
+                <strong>1. 지역 선택 🗺️</strong>
+                지도나 왼쪽 목록에서 방문한 <b>구(Gu)</b>를 선택하세요.
+            </div>
+
+            <div class="guide-section">
+                <strong>2. 방문 체크 ✅</strong>
+                다녀온 지점을 리스트에서 클릭하여 체크하세요.<br>
+                진행도에 따라 <b>동/구의 색상</b>이 점점 진해집니다! 🌿
+            </div>
+
+            <div class="guide-note">
+                * 초록색으로 표시된 동은 스타벅스가 없는 지역입니다.<br>
+                (자동 100% 완료 처리)
+            </div>
+
+            <div class="guide-controls">
+                <div>🔄 <b>구 초기화</b>: 현재 보고 있는 구의 기록만 삭제</div>
+                <div>⏮ <b>뒤로가기</b>: 서울 전체 지도로 돌아가기</div>
+                <div>🗑 <b>전체 초기화</b>: 모든 방문 기록 삭제 (우측 상단)</div>
+            </div>
+
+            <div class="footer-note">
+                오류 제보나 건의 사항은 우측 상단의 '문의'를 이용해주세요.<br>
+                v1.0.0
+            </div>
+        </div>
+    </div>
 
     <div id="sidebar">
         <div class="sidebar-header">
@@ -332,7 +602,10 @@
         </div>
     </div>
 
-    <div id="map"></div>
+    <div id="map">
+        <div id="info-btn" onclick="openModal()">i</div>
+        <div id="profile-btn" onclick="openWelcomeModal()">★</div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -385,6 +658,20 @@
             }).addTo(map);
 
             renderGuList();
+
+            // [FIX] Ensure map fits Seoul properly after layout is ready
+            setTimeout(() => {
+                map.invalidateSize();
+                map.fitBounds(guLayer.getBounds(), { padding: [30, 30], maxZoom: 12 });
+            }, 100);
+        });
+
+        // [FIX] Handle window resize to keep map properly sized
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+            if (currentLevel === 'GU' && guLayer) {
+                map.fitBounds(guLayer.getBounds(), { padding: [30, 30], maxZoom: 12, animate: false });
+            }
         });
 
         function processData() {
@@ -408,8 +695,26 @@
             document.getElementById('gu-reset-btn').style.display = 'none';
             document.getElementById('global-actions').style.display = 'flex';
 
-            if (guLayer) map.fitBounds(guLayer.getBounds(), { padding: [20, 20], duration: 0.8 });
-            else map.flyTo([37.5665, 126.9780], 11);
+            // First, reset any zoom constraints that might prevent fitting
+            map.setMinZoom(1);
+            map.setMaxBounds(null);
+
+            // Force map to recalculate its size (fixes layout issues)
+            map.invalidateSize();
+
+            if (guLayer) {
+                const bounds = guLayer.getBounds();
+                // Use maxZoom to prevent over-zooming on small screens
+                map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12, animate: true, duration: 0.5 });
+
+                // Re-apply constraints after animation completes
+                setTimeout(() => {
+                    map.setMaxBounds(bounds.pad(0.3));
+                    map.setMinZoom(map.getZoom() - 0.5);
+                }, 600);
+            } else {
+                map.flyTo([37.5665, 126.9780], 11);
+            }
 
             guLayer.setStyle(styleGuMode);
             guLayer.eachLayer(l => l.getElement().style.pointerEvents = 'auto');
@@ -640,9 +945,14 @@
         }
 
         function resetUserData() {
-            if (confirm("모든 기록을 초기화하시겠습니까?")) {
+            if (confirm("방문 기록을 초기화하시겠습니까?\n(성별/나이 정보는 유지됩니다)")) {
                 window.dataLayer.push({ 'event': 'reset_data', 'type': 'all' });
+
+                // Keep user profile, remove others
                 localStorage.removeItem('visited_stores');
+                localStorage.removeItem('has_seen_guide');
+                // localStorage.removeItem('user_profile'); // Preserved!
+
                 location.reload();
             }
         }
@@ -663,6 +973,86 @@
 
             updateDongLayer(currentGu);
             document.getElementById('count-checked').textContent = 0;
+        }
+
+        /* Modal & User Flow Logic */
+        const modal = document.getElementById('info-modal');
+        const welcomeModal = document.getElementById('welcome-modal');
+        let userInputs = { age: null, gender: null };
+
+        // 1. Check User Profile on Load
+        const storedProfile = localStorage.getItem('user_profile');
+        if (!storedProfile) {
+            openWelcomeModal();
+        } else {
+            const p = JSON.parse(storedProfile);
+            window.dataLayer.push({ 'user_age': p.age, 'user_gender': p.gender });
+            userInputs = p; // Load for editing
+            checkAndShowGuide();
+        }
+
+        function openWelcomeModal() {
+            welcomeModal.style.display = 'flex';
+
+            // Pre-select if editing
+            const stored = localStorage.getItem('user_profile');
+            if (stored) {
+                const p = JSON.parse(stored);
+                selectChip('age', p.age);
+                selectChip('gender', p.gender);
+                document.getElementById('start-btn').textContent = "수정 완료";
+            }
+        }
+
+        function checkAndShowGuide() {
+            if (!localStorage.getItem('has_seen_guide')) {
+                // Show Guide immediately if it's the first flow
+                openModal();
+            }
+        }
+
+        function selectChip(type, value) {
+            userInputs[type] = value;
+
+            const container = document.getElementById(`${type}-selector`);
+            if (!container) return; // Guard clause
+
+            Array.from(container.children).forEach(c => {
+                if (c.textContent.trim() === value) c.classList.add('selected');
+                else c.classList.remove('selected');
+            });
+
+            const btn = document.getElementById('start-btn');
+            if (userInputs.age && userInputs.gender) btn.disabled = false;
+        }
+
+        function submitUserInfo() {
+            if (!userInputs.age || !userInputs.gender) return;
+
+            const isEdit = localStorage.getItem('user_profile') !== null;
+            localStorage.setItem('user_profile', JSON.stringify(userInputs));
+
+            window.dataLayer.push({
+                'event': isEdit ? 'user_profile_update' : 'user_signup',
+                'user_age': userInputs.age,
+                'user_gender': userInputs.gender
+            });
+
+            welcomeModal.style.display = 'none';
+
+            // If it was a new signup, show guide next. If edit, just close.
+            if (!isEdit || !localStorage.getItem('has_seen_guide')) {
+                openModal();
+            }
+        }
+
+        function openModal() { modal.style.display = 'flex'; }
+
+        function closeModal(e, force = false) {
+            if (force || e.target === modal) {
+                modal.style.display = 'none';
+                localStorage.setItem('has_seen_guide', 'true');
+            }
         }
     </script>
 </body>
