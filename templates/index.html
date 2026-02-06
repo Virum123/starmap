@@ -275,9 +275,24 @@
             height: 8px;
         }
     </style>
+
+    <!-- Google Tag Manager -->
+    <script>(function (w, d, s, l, i) {
+            w[l] = w[l] || []; w[l].push({
+                'gtm.start':
+                    new Date().getTime(), event: 'gtm.js'
+            }); var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+                    'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-TNMFBPBD');</script>
+    <!-- End Google Tag Manager -->
 </head>
 
 <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TNMFBPBD" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
 
     <div id="sidebar">
         <div class="sidebar-header">
@@ -287,7 +302,8 @@
                     <button id="gu-reset-btn" onclick="resetGuData()">구 초기화</button>
                     <button id="header-back-btn" onclick="resetToSeoul()">← 뒤로가기</button>
                     <div class="header-actions" id="global-actions">
-                        <span onclick="alert('kk30100@naver.com')">문의</span>
+                        <span
+                            onclick="alert('kk30100@naver.com'); window.dataLayer.push({'event': 'contact_click'});">문의</span>
                         <span style="opacity:0.3">|</span>
                         <span onclick="resetUserData()">초기화</span>
                     </div>
@@ -321,6 +337,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const map = L.map('map', { zoomControl: false, center: [37.5665, 126.9780], zoom: 11, zoomSnap: 0.1 });
+        window.dataLayer = window.dataLayer || []; // Init dataLayer
 
         const getColor = (r, isNoStore = false) => {
             if (isNoStore) return '#004d33';
@@ -404,6 +421,13 @@
         function drillDownToGu(guName, bounds) {
             currentLevel = 'DONG';
             currentGu = guName;
+
+            // GTM Tracking
+            window.dataLayer.push({
+                'event': 'view_gu_detail',
+                'gu_name': guName
+            });
+
             document.getElementById('header-back-btn').style.display = 'block';
             document.getElementById('gu-reset-btn').style.display = 'block';
             document.getElementById('global-actions').style.display = 'none';
@@ -510,10 +534,12 @@
                 visitedStores.delete(storeName);
                 li.classList.remove('visited');
                 guStats[guName].v--;
+                window.dataLayer.push({ 'event': 'store_visit_toggle', 'store_name': storeName, 'action': 'remove', 'gu_name': guName });
             } else {
                 visitedStores.add(storeName);
                 li.classList.add('visited');
                 guStats[guName].v++;
+                window.dataLayer.push({ 'event': 'store_visit_toggle', 'store_name': storeName, 'action': 'add', 'gu_name': guName });
             }
 
             localStorage.setItem('visited_stores', JSON.stringify([...visitedStores]));
@@ -526,8 +552,10 @@
 
             if (!wasGuFull && isGuFull) {
                 createFireworks();
+                window.dataLayer.push({ 'event': 'achievement_unlocked', 'type': 'gu_completion', 'gu_name': guName });
             } else if (!wasDongFull && isDongFull) {
                 createConfetti(15);
+                window.dataLayer.push({ 'event': 'achievement_unlocked', 'type': 'dong_completion', 'gu_name': guName, 'dong_name': dongName });
             }
 
             if (currentLevel === 'GU') {
@@ -612,11 +640,17 @@
         }
 
         function resetUserData() {
-            if (confirm("모든 기록을 초기화하시겠습니까?")) { localStorage.removeItem('visited_stores'); location.reload(); }
+            if (confirm("모든 기록을 초기화하시겠습니까?")) {
+                window.dataLayer.push({ 'event': 'reset_data', 'type': 'all' });
+                localStorage.removeItem('visited_stores');
+                location.reload();
+            }
         }
 
         function resetGuData() {
             if (!currentGu || !confirm(`${currentGu}의 기록을 초기화하시겠습니까?`)) return;
+
+            window.dataLayer.push({ 'event': 'reset_data', 'type': 'gu', 'gu_name': currentGu });
 
             const stores = storesByGu[currentGu] || [];
             stores.forEach(s => {
