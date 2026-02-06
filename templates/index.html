@@ -175,6 +175,19 @@
         <div class="store-container">
             <ul id="store-list"></ul>
         </div>
+
+        <!-- Footer for Contact & Reset -->
+        <div
+            style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 0.85rem; color: #666;">
+            <div>
+                <a href="mailto:your_email@example.com"
+                    style="color: #666; text-decoration: none; margin-right: 15px;">📧 문의하기</a>
+                <span style="cursor: pointer; color: #999;" onclick="resetUserData()">🔄 초기화</span>
+            </div>
+            <div style="margin-top: 5px; font-size: 0.7rem; color: #aaa;">
+                방문 기록은 이 브라우저에만 저장됩니다.
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -192,6 +205,42 @@
         let guStatsMap = {};
         let currentLevel = 'GU';
         let currentGu = null;
+
+        // --- [UUID & Logging] ---
+        // 1. UUID Generation or Retrieval
+        let userUUID = localStorage.getItem('user_uuid');
+        if (!userUUID) {
+            userUUID = crypto.randomUUID();
+            localStorage.setItem('user_uuid', userUUID);
+        }
+
+        // 2. Logging Function
+        const logAction = (action, target) => {
+            fetch('/api/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uuid: userUUID, action: action, target: target })
+            }).catch(err => console.error("Log failed:", err));
+        };
+
+        // 3. Visit State (LocalStorage)
+        // Load visits from Storage instead of Server (for anonymous)
+        let visitedStores = new Set(JSON.parse(localStorage.getItem('visited_stores') || '[]'));
+
+        // Reset Function
+        const resetUserData = () => {
+            if (confirm("모든 방문 기록을 초기화 하시겠습니까?")) {
+                localStorage.removeItem('visited_stores');
+                visitedStores.clear();
+                alert("초기화 되었습니다.");
+                location.reload();
+            }
+        };
+
+        // Log Entry
+        window.onload = () => {
+            logAction('PAGE_VIEW', 'Main');
+        };
 
         // --- [2] 유틸리티 함수 ---
         const getColor = (ratio) => {
@@ -298,6 +347,9 @@
         function drillDownToGu(guName, bounds) {
             currentLevel = 'DONG';
             currentGu = guName;
+
+            logAction('CLICK_GU', guName); // Log Gu Click
+
             document.getElementById('back-btn').style.display = 'block';
             document.getElementById('view-title').textContent = guName;
 
@@ -369,20 +421,27 @@
 
         function updateStoreList(storeData) {
             const list = document.getElementById('store-list');
-            list.innerHTML = storeData.map(s => `
-                <li class="store-item">
-                    <input type="checkbox" 
-                           ${s.visited === 1 ? 'checked' : ''} 
-                           onclick="toggleVisit('${s.store_code}', this.checked, '${s.gu}')">
-                    <div class="store-info">
-                        <span class="store-name">${s.store_name}</span>
-                        <span class="store-addr">${s.gu} ${s.dong}</span>
-                    </div>
-                </li>
-            `).join('');
+            list.innerHTML = '';
 
-            document.getElementById('count-total').textContent = storeData.length;
-            updateCheckedCount();
+            // Fragment for performance
+            const fragment = document.createDocumentFragment();
+
+            storeData.forEach(store => {
+                const li = document.createElement('li');
+                // Check if visited from LocalStorage
+                if (visitedStores.has(store.store_name)) {
+                    li.classList.add('visited');
+                }
+                li.onclick = () => toggleVisit(store.store_name, store.lat, store.lng, li);
+                li.innerHTML = `
+                    <strong>${store.store_name}</strong>
+                    <div class="store-addr">${store.dong} | ${store.address}</div>
+                `;
+                fragment.appendChild(li);
+            });
+
+            list.appendChild(fragment);
+            updateCounts();
         }
 
         function updateCheckedCount() {
@@ -391,52 +450,47 @@
             document.getElementById('count-checked').textContent = checkedCount;
         }
 
-        window.toggleVisit = function (storeCode, isChecked, guName) {
-            fetch('/api/update-visit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ store_code: storeCode, visited: isChecked })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (currentLevel === 'DONG' && currentGu === guName) {
-                            // Refresh Dong View
-                            fetch(`/api/dong-stats?gu=${guName}`).then(r => r.json()).then(stores => {
-                                const dongStats = {};
-                                stores.forEach(s => {
-                                    if (!dongStats[s.dong]) dongStats[s.dong] = { total: 0, visited: 0 };
-                                    dongStats[s.dong].total++;
-                                    if (s.visited) dongStats[s.dong].visited++;
-                                });
+        async function toggleVisit(storeName, lat, lng, liElement) {
+            // New logic: Toggle in LocalStorage
 
-                                dongLayer.eachLayer(layer => {
-                                    if (layer.feature.properties.sggnm === guName) {
-                                        const dName = layer.feature.properties.adm_nm.split(' ').pop();
-                                        const normalizedName = normalizeDongName(dName);
-                                        const stat = dongStats[normalizedName] || { visited: 0, total: 0 };
+            const isVisited = visitedStores.has(storeName);
+            const action = isVisited ? 'uncheck' : 'check';
 
-                                        let ratio = 0;
-                                        if (stat.total === 0) ratio = 1.0;
-                                        else ratio = stat.visited / stat.total;
+            if (!isVisited) {
+                visitedStores.add(storeName);
+                if (liElement) liElement.classList.add('visited');
+                // createConfetti(lat, lng); // Assuming createConfetti is defined elsewhere or will be added
+            } else {
+                visitedStores.delete(storeName);
+                if (liElement) liElement.classList.remove('visited');
+            }
 
-                                        layer.feature.properties.visitRatio = ratio;
-                                        layer.setStyle(styleDongMode(layer.feature));
-                                    }
-                                });
-                                updateCheckedCount();
-                            });
-                        }
+            // Save to LocalStorage
+            localStorage.setItem('visited_stores', JSON.stringify([...visitedStores]));
 
-                        // Always refresh Gu stats
-                        fetch('/api/gu-stats').then(res => res.json()).then(stats => {
-                            stats.forEach(s => {
-                                guStatsMap[s.gu] = s.total_stores ? s.visited_stores / s.total_stores : 0;
-                            });
-                        });
-                    }
-                });
-        };
+            // Log to Server
+            logAction(action.toUpperCase(), storeName);
+
+            // Update UI Counters immediately
+            updateCounts();
+        }
+
+        function updateCounts() {
+            // Re-calc counts based on visible stores in list
+            const stores = document.querySelectorAll('#store-list li');
+            const total = stores.length;
+            let checked = 0;
+            stores.forEach(li => {
+                if (visitedStores.has(li.querySelector('strong').textContent)) {
+                    li.classList.add('visited'); // Ensure class is correct
+                    checked++;
+                }
+            });
+            document.getElementById('count-total').textContent = total;
+            document.getElementById('count-checked').textContent = checked;
+        }
+
+
 
         function loadStoreList(gu) {
             let url = '/api/dong-stats';

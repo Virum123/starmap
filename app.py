@@ -70,6 +70,42 @@ def get_dong_stats():
         print(f"Error in dong-stats: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/toggle', methods=['POST'])
+def toggle_visit():
+    # Deprecated for anonymous users (Frontend handles localStorage)
+    # Keeping it for potential future auth use or sync
+    data = request.json
+    store_name = data.get('store_name')
+    action = data.get('action') # 'check' or 'uncheck'
+
+    conn = sqlite3.connect('starbucks.db')
+    cur = conn.cursor()
+    visited_val = 1 if action == 'check' else 0
+    cur.execute("UPDATE stores SET visited = ? WHERE store_name = ?", (visited_val, store_name))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success"})
+
+@app.route('/api/log', methods=['POST'])
+def log_action():
+    try:
+        data = request.json
+        user_uuid = data.get('uuid')
+        action = data.get('action')
+        target = data.get('target')
+        ip_addr = request.remote_addr
+
+        conn = sqlite3.connect('starbucks.db')
+        cur = conn.cursor()
+        cur.execute("INSERT INTO action_logs (user_uuid, action, target, ip_address) VALUES (?, ?, ?, ?)",
+                    (user_uuid, action, target, ip_addr))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "logged"})
+    except Exception as e:
+        print(f"Log Error: {e}")
+        return jsonify({"status": "error"}), 500
+
 @app.route('/api/update-visit', methods=['POST'])
 def update_visit():
     try:
