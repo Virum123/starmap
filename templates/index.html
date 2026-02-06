@@ -184,7 +184,8 @@
             zoomControl: false,
             wheelPxPerZoomLevel: 120, // 스크롤 줌 속도 절반
             zoomSnap: 0.5,
-            zoomDelta: 0.5
+            zoomDelta: 0.5,
+            renderer: L.svg({ padding: 3 }) // 렌더링 범위를 넓혀서 애니메이션 중 잘림 방지
         }).setView([37.5665, 126.9780], 11);
 
         let guLayer, dongLayer;
@@ -201,6 +202,15 @@
                             ratio >= 0.2 ? '#74c476' :
                                 ratio > 0 ? '#a1d99b' :
                                     '#ffffff';
+        };
+
+        // Normalize dong name: remove numbers, dots, and "가" suffix globally
+        // Examples: "월계1동" -> "월계동", "상계3·4동" -> "상계동"
+        // Normalize dong name: NOW DISABLED for granular mapping
+        // We want "상계1동" to remain "상계1동" to match the DB
+        const normalizeDongName = (name) => {
+            return name; // Identity function
+            // return name.replace(/[0-9·.]+/g, '').replace(/가$/, '');
         };
 
         // Gu Layer Style (Level 1)
@@ -252,7 +262,13 @@
             document.getElementById('back-btn').style.display = 'none';
             document.getElementById('view-title').textContent = '서울시 전체';
 
-            map.flyTo([37.5665, 126.9780], 11, { duration: 1.5 });
+            // 1. Clear list immediately for instant feedback & performance
+            document.getElementById('store-list').innerHTML = '';
+            document.getElementById('count-total').textContent = '0';
+            document.getElementById('count-checked').textContent = '0';
+
+            // 2. Faster animation (1.5s -> 1.0s)
+            map.flyTo([37.5665, 126.9780], 11, { duration: 1.0 });
 
             // Toggle Layers
             if (dongLayer) map.removeLayer(dongLayer);
@@ -272,7 +288,11 @@
                     });
                 });
             }
-            loadStoreList('total');
+
+            // 3. Defer loading the massive list until animation ends
+            map.once('moveend', () => {
+                loadStoreList('total');
+            });
         }
 
         function drillDownToGu(guName, bounds) {
@@ -310,12 +330,8 @@
             fetch(`/api/dong-stats?gu=${guName}`)
                 .then(res => res.json())
                 .then(stores => {
-                    // Normalize dong name: remove numbers and "가" suffix
-                    // DB: "월계동", "공릉동", "상계동"  
-                    // GeoJSON: "월계1동", "공릉2동", "상계3·4가"
-                    const normalizeDongName = (name) => {
-                        return name.replace(/[0-9·]+가?$/g, '');  // Remove numbers, bullets, and "가"
-                    };
+                    // Normalize function is now global
+
 
                     const dongStats = {};
                     stores.forEach(s => {
@@ -397,7 +413,8 @@
                                 dongLayer.eachLayer(layer => {
                                     if (layer.feature.properties.sggnm === guName) {
                                         const dName = layer.feature.properties.adm_nm.split(' ').pop();
-                                        const stat = dongStats[dName] || { visited: 0, total: 0 };
+                                        const normalizedName = normalizeDongName(dName);
+                                        const stat = dongStats[normalizedName] || { visited: 0, total: 0 };
 
                                         let ratio = 0;
                                         if (stat.total === 0) ratio = 1.0;

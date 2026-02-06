@@ -24,6 +24,8 @@ def index():
 @app.route('/api/gu-stats')
 def get_gu_stats():
     try:
+        # sgg (Sub-Governmental Code) is useful for matching if GeoJSON uses codes, 
+        # but current GeoJSON mostly uses names. We'll stick to names but cleaner query.
         results = query_db("""
             SELECT 
                 gu,
@@ -44,19 +46,25 @@ def get_dong_stats():
         gu_name = request.args.get('gu')
         dong_name = request.args.get('dong')
         
-        if gu_name and dong_name:
-            results = query_db(
-                "SELECT * FROM stores WHERE gu = ? AND dong = ? ORDER BY store_name",
-                (gu_name, dong_name)
-            )
-        elif gu_name:
-            results = query_db(
-                "SELECT * FROM stores WHERE gu = ? ORDER BY dong, store_name",
-                (gu_name,)
-            )
-        else:
-            results = query_db("SELECT * FROM stores ORDER BY gu, dong, store_name")
+        args = []
+        where_clause = []
         
+        query = "SELECT * FROM stores"
+        
+        if gu_name:
+            where_clause.append("gu = ?")
+            args.append(gu_name)
+            
+        if dong_name:
+            where_clause.append("dong = ?")
+            args.append(dong_name)
+            
+        if where_clause:
+            query += " WHERE " + " AND ".join(where_clause)
+            
+        query += " ORDER BY gu, dong, store_name"
+        
+        results = query_db(query, args)
         return jsonify([dict(row) for row in results])
     except Exception as e:
         print(f"Error in dong-stats: {e}")
