@@ -1,59 +1,51 @@
 // ============================================================================
-// MapView.jsx - 지도 컴포넌트 (Leaflet 기반)
+// MapView.jsx - 리팩토링 v4 (부드러운 애니메이션 적용)
 // ============================================================================
+// 
+// 📌 애니메이션 로직:
+// [구 -> 동] 
+// 1. map.flyToBounds()로 해당 구 영역으로 부드럽게 줌인 (1.2초)
+// 2. 줌이 끝나는 시점(setTimeout)에 동 레이어로 교체
 //
-// 📚 역할:
-// - 서울시 구/동 경계를 GeoJSON으로 표시
-// - 방문율에 따른 색상 그라데이션 적용
-// - 구 클릭 시 동 레벨로 드릴다운
-// - 플로팅 버튼 (프로필)
-//
-// 📌 Leaflet 핵심 개념:
-// - L.map(): 지도 인스턴스 생성
-// - L.geoJSON(): GeoJSON 데이터를 지도 레이어로 변환
-// - setStyle(): 레이어 스타일 동적 변경
-// - fitBounds(): 지도 뷰를 특정 영역에 맞춤
-//
-// 📌 React + Leaflet 통합:
-// - useRef: Leaflet 인스턴스를 React 외부에서 관리
-// - useEffect: 컴포넌트 생명주기에 맞춰 지도 초기화/정리
+// [동 -> 구]
+// 1. 구 레이어로 즉시 교체 (서울 전체 지도 표시)
+// 2. map.flyToBounds()로 서울 전체 영역으로 줌아웃 (1.2초)
 // ============================================================================
 
 import { useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { trackViewGu } from '../utils/analytics';
 
 // ============================================================================
-// 🎨 색상 유틸리티 함수
+// 🎨 색상 유틸리티
 // ============================================================================
-// 방문율(0~1)에 따라 흰색(0%)에서 초록색(100%)으로 그라데이션
 function getColor(ratio, isNoStore = false) {
-    // 매장이 없는 동은 100% 완료 색상 (스타벅스 초록)
     if (isNoStore) return '#00704a';
-
-    // RGB 그라데이션 계산
-    const startR = 255, startG = 255, startB = 255;  // 흰색
-    const endR = 0, endG = 112, endB = 74;           // 스타벅스 초록
-
-    const r = Math.round(startR + (endR - startR) * ratio);
-    const g = Math.round(startG + (endG - startG) * ratio);
-    const b = Math.round(startB + (endB - startB) * ratio);
-
+    const start = { r: 255, g: 255, b: 255 };
+    const end = { r: 0, g: 112, b: 74 };
+    const r = Math.round(start.r + (end.r - start.r) * ratio);
+    const g = Math.round(start.g + (end.g - start.g) * ratio);
+    const b = Math.round(start.b + (end.b - start.b) * ratio);
     return `rgb(${r}, ${g}, ${b})`;
 }
 
 function MapView({ stores, visitedStores, currentGu, onSelectGu, onShowProfile, onBack }) {
-    // =========================================================================
-    // 📌 Ref 선언 (Leaflet 인스턴스를 React 외부에서 관리)
-    // =========================================================================
-    const mapContainerRef = useRef(null);   // DOM 요소 참조
-    const mapRef = useRef(null);            // Leaflet 지도 인스턴스
-    const guLayerRef = useRef(null);        // 구 경계 레이어
-    const dongLayerRef = useRef(null);      // 동 경계 레이어
-    const seoulBoundsRef = useRef(null);    // 서울 전체 범위
+    // 📌 Refs
+    const mapContainerRef = useRef(null);
+    const mapRef = useRef(null);
+
+    // 레이어 Refs
+    const guLayerRef = useRef(null);
+    const activeDongLayerRef = useRef(null);
+
+    // 데이터 및 상태 Refs
+    const guGeoJsonRef = useRef(null);
+    const dongGeoJsonRef = useRef(null);
+    const seoulBoundsRef = useRef(null);
 
     // =========================================================================
-    // 📊 구별 통계 계산 (useMemo로 최적화)
+    // 📊 통계 계산
     // =========================================================================
     const guStats = useMemo(() => {
         const stats = {};
@@ -66,10 +58,8 @@ function MapView({ stores, visitedStores, currentGu, onSelectGu, onShowProfile, 
     }, [stores, visitedStores]);
 
     // =========================================================================
-    // 🎨 스타일 정의
+    // 🎨 스타일 함수
     // =========================================================================
-
-    // 구 레이어 스타일 (방문율 기반)
     const getGuStyle = (feature) => {
         const name = feature.properties.name || feature.properties.SIG_KOR_NM;
         const stat = guStats[name] || { total: 0, visited: 0 };
@@ -83,77 +73,60 @@ function MapView({ stores, visitedStores, currentGu, onSelectGu, onShowProfile, 
         };
     };
 
-    // 숨김 스타일 (레이어를 완전히 숨김)
-    const hiddenStyle = {
-        opacity: 0,
-        fillOpacity: 0,
-        weight: 0,
-        interactive: false
+    const getDongStyle = (feature) => {
+        const dongName = feature.properties.adm_nm.split(' ').pop();
+        const dongStores = stores.filter(s => s.gu === currentGu && s.dong === dongName);
+        const total = dongStores.length;
+        const visited = dongStores.filter(s => visitedStores.has(s.store_name)).length;
+        const ratio = total > 0 ? visited / total : 0;
+        const isNoStore = total === 0;
+
+        return {
+            fillColor: getColor(ratio, isNoStore),
+            weight: 1,
+            opacity: 1,
+            color: '#8c8c8c',
+            fillOpacity: 1
+        };
     };
 
     // =========================================================================
-    // 🗺️ 지도 초기화 (컴포넌트 마운트 시 1회)
+    // 🗺️ 지도 초기화
     // =========================================================================
     useEffect(() => {
-        // 이미 초기화된 경우 중복 방지
         if (mapRef.current) return;
 
-        // Leaflet 지도 인스턴스 생성
         mapRef.current = L.map(mapContainerRef.current, {
-            center: [37.5665, 126.9780],  // 서울 중심 좌표
+            center: [37.5665, 126.9780],
             zoom: 11,
-            zoomControl: false,           // 줌 컨트롤 숨김
-            attributionControl: false     // 저작권 표시 숨김
+            zoomControl: false,
+            attributionControl: false
         });
 
-        // 우클릭 시 서울 전체보기로 복귀
+        // 우클릭 뒤로가기
         mapContainerRef.current.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             if (onBack) onBack();
         });
 
-        // 구 경계 GeoJSON 로드
-        fetch('/static/seoul_gu_map.geojson')
-            .then(r => r.json())
-            .then(data => {
-                guLayerRef.current = L.geoJSON(data, {
-                    style: getGuStyle,
-                    onEachFeature: (feature, layer) => {
-                        const name = feature.properties.name || feature.properties.SIG_KOR_NM;
+        // 데이터 로드
+        Promise.all([
+            fetch('/static/seoul_gu_map.geojson').then(r => r.json()),
+            fetch('/static/seoul_map.geojson').then(r => r.json())
+        ]).then(([guData, dongData]) => {
+            guGeoJsonRef.current = guData;
+            dongGeoJsonRef.current = dongData;
 
-                        // 툴팁 (마우스 오버 시 구 이름 표시)
-                        layer.bindTooltip(`<b>${name}</b>`, { sticky: true });
+            // 초기 구 레이어 표시
+            renderGuLayer();
 
-                        // 이벤트 핸들러
-                        layer.on('click', () => onSelectGu && onSelectGu(name));
-                        layer.on('mouseover', () => layer.setStyle({ weight: 3 }));
-                        layer.on('mouseout', () => layer.setStyle({ weight: 2 }));
-                    }
-                }).addTo(mapRef.current);
-
-                // 서울 전체 범위 저장 및 지도 맞춤
+            // 서울 전체 경계 저장
+            if (guLayerRef.current) {
                 seoulBoundsRef.current = guLayerRef.current.getBounds();
-                mapRef.current.fitBounds(seoulBoundsRef.current, {
-                    padding: [50, 50],
-                    maxZoom: 11
-                });
-                mapRef.current.setMaxBounds(seoulBoundsRef.current.pad(0.2));
-            });
+                mapRef.current.fitBounds(seoulBoundsRef.current, { padding: [50, 50] });
+            }
+        });
 
-        // 동 경계 GeoJSON 로드 (초기엔 숨김)
-        fetch('/static/seoul_map.geojson')
-            .then(r => r.json())
-            .then(data => {
-                dongLayerRef.current = L.geoJSON(data, {
-                    style: hiddenStyle,  // 초기 상태: 숨김
-                    onEachFeature: (feature, layer) => {
-                        const dongName = feature.properties.adm_nm.split(' ').pop();
-                        layer.bindTooltip(`<b>${dongName}</b>`, { sticky: true });
-                    }
-                }).addTo(mapRef.current);
-            });
-
-        // 컴포넌트 언마운트 시 지도 정리
         return () => {
             if (mapRef.current) {
                 mapRef.current.remove();
@@ -163,125 +136,116 @@ function MapView({ stores, visitedStores, currentGu, onSelectGu, onShowProfile, 
     }, []);
 
     // =========================================================================
-    // 🔄 구 선택 시 레이어 업데이트
+    // 🔄 레이어 렌더링 함수 (직접 호출)
+    // =========================================================================
+    const renderGuLayer = () => {
+        if (!mapRef.current || !guGeoJsonRef.current) return;
+
+        // 기존 레이어 정리
+        if (guLayerRef.current) guLayerRef.current.remove();
+        if (activeDongLayerRef.current) activeDongLayerRef.current.remove();
+
+        guLayerRef.current = L.geoJSON(guGeoJsonRef.current, {
+            style: getGuStyle,
+            onEachFeature: (feature, layer) => {
+                const name = feature.properties.name || feature.properties.SIG_KOR_NM;
+                layer.bindTooltip(`<b>${name}</b>`, { sticky: true });
+                layer.on('click', () => onSelectGu && onSelectGu(name));
+                layer.on('mouseover', () => layer.setStyle({ weight: 4, color: '#00704a' }));
+                layer.on('mouseout', () => layer.setStyle({ weight: 2, color: '#1e3932' }));
+            }
+        }).addTo(mapRef.current);
+    };
+
+    const renderDongLayer = () => {
+        if (!mapRef.current || !dongGeoJsonRef.current || !currentGu) return;
+
+        // 구 레이어 제거 (겹침 방지)
+        if (guLayerRef.current) guLayerRef.current.remove();
+        if (activeDongLayerRef.current) activeDongLayerRef.current.remove();
+
+        const filteredFeatures = dongGeoJsonRef.current.features.filter(
+            f => f.properties.sggnm === currentGu
+        );
+
+        const filteredGeoJson = { type: "FeatureCollection", features: filteredFeatures };
+
+        activeDongLayerRef.current = L.geoJSON(filteredGeoJson, {
+            style: getDongStyle,
+            onEachFeature: (feature, layer) => {
+                const dongName = feature.properties.adm_nm.split(' ').pop();
+                layer.bindTooltip(`<b>${dongName}</b>`, { sticky: true });
+                layer.on('mouseover', () => layer.setStyle({ weight: 3, color: '#000' }));
+                layer.on('mouseout', () => layer.setStyle({ weight: 1, color: '#8c8c8c' }));
+            }
+        }).addTo(mapRef.current);
+    };
+
+    // =========================================================================
+    // ⚡ 애니메이션 및 화면 전환 로직
     // =========================================================================
     useEffect(() => {
-        if (!mapRef.current || !guLayerRef.current || !dongLayerRef.current) return;
+        if (!mapRef.current) return;
 
         if (currentGu) {
-            // ===== 동 레벨 보기 =====
+            // [구 -> 동] 줌인 애니메이션
 
-            // 1. 구 레이어 숨김
-            guLayerRef.current.eachLayer(layer => {
-                layer.setStyle(hiddenStyle);
-                layer.closeTooltip();
-                layer.unbindTooltip();
-            });
+            // 1. 해당 구의 경계 찾기 (GeoJSON 데이터에서)
+            const targetFeature = guGeoJsonRef.current?.features.find(
+                f => (f.properties.name || f.properties.SIG_KOR_NM) === currentGu
+            );
 
-            // 2. 동별 통계 계산
-            const dongStats = {};
-            stores.filter(s => s.gu === currentGu).forEach(s => {
-                if (!dongStats[s.dong]) dongStats[s.dong] = { total: 0, visited: 0 };
-                dongStats[s.dong].total++;
-                if (visitedStores.has(s.store_name)) dongStats[s.dong].visited++;
-            });
+            if (targetFeature) {
+                const targetBounds = L.geoJSON(targetFeature).getBounds();
 
-            // 3. 선택한 구의 동만 표시
-            let guBounds = null;
-            dongLayerRef.current.eachLayer(layer => {
-                const guName = layer.feature.properties.sggnm;
-
-                if (guName === currentGu) {
-                    const dongName = layer.feature.properties.adm_nm.split(' ').pop();
-                    const stat = dongStats[dongName] || { total: 0, visited: 0 };
-                    const ratio = stat.total > 0 ? stat.visited / stat.total : 0;
-                    const isNoStore = stat.total === 0;
-
-                    // 동 스타일 적용
-                    layer.setStyle({
-                        fillColor: getColor(ratio, isNoStore),
-                        weight: 1,
-                        color: '#1e3932',
-                        opacity: 1,
-                        fillOpacity: 1,
-                        interactive: true
-                    });
-                    layer.bindTooltip(`<b>${dongName}</b>`, { sticky: true });
-
-                    // 범위 계산
-                    if (!guBounds) guBounds = layer.getBounds();
-                    else guBounds.extend(layer.getBounds());
-                } else {
-                    // 다른 구의 동은 숨김
-                    layer.setStyle(hiddenStyle);
-                    layer.closeTooltip();
-                }
-            });
-
-            // 4. 지도를 해당 구에 맞춤
-            if (guBounds) {
-                mapRef.current.setMaxBounds(null);
-                mapRef.current.fitBounds(guBounds, { padding: [60, 60] });
-                setTimeout(() => mapRef.current.setMaxBounds(guBounds.pad(0.3)), 300);
-            }
-        } else {
-            // ===== 서울 전체 보기 =====
-            mapRef.current.setMaxBounds(null);
-
-            // 구 레이어 표시
-            guLayerRef.current.eachLayer(layer => {
-                const name = layer.feature.properties.name || layer.feature.properties.SIG_KOR_NM;
-                layer.setStyle(getGuStyle(layer.feature));
-                layer.bindTooltip(`<b>${name}</b>`, { sticky: true });
-            });
-
-            // 동 레이어 숨김
-            dongLayerRef.current.eachLayer(layer => {
-                layer.setStyle(hiddenStyle);
-                layer.closeTooltip();
-            });
-
-            // 서울 전체로 지도 맞춤
-            if (seoulBoundsRef.current) {
-                mapRef.current.fitBounds(seoulBoundsRef.current, {
+                // 2. 부드럽게 줌인 (1.2초)
+                mapRef.current.flyToBounds(targetBounds, {
                     padding: [50, 50],
-                    maxZoom: 11
+                    duration: 1.2,
+                    easeLinearity: 0.25
                 });
+
+                // 3. 줌이 얼추 끝날 때쯤 동 레이어로 교체
+                // flyToBounds가 끝나는 시점을 정확히 잡기 위해 setTimeout 사용
                 setTimeout(() => {
-                    mapRef.current.setMaxBounds(seoulBoundsRef.current.pad(0.2));
-                }, 300);
+                    renderDongLayer();
+                }, 1200);
+            } else {
+                // 혹시 못 찾으면 즉시 렌더링
+                renderDongLayer();
+            }
+
+        } else {
+            // [동 -> 구] 줌아웃 애니메이션
+
+            // 1. 구 레이어 즉시 복구 (서울 전체가 보여야 함)
+            renderGuLayer();
+
+            // 2. 서울 전체로 부드럽게 줌아웃
+            if (seoulBoundsRef.current) {
+                mapRef.current.flyToBounds(seoulBoundsRef.current, {
+                    padding: [50, 50],
+                    duration: 1.2,
+                    easeLinearity: 0.25
+                });
             }
         }
-    }, [currentGu, stores, visitedStores, guStats]);
+    }, [currentGu]); // stores가 바뀔 때는 스타일만 업데이트(아래 useEffect)
 
-    // =========================================================================
-    // 🔄 방문 상태 변경 시 구 레이어 색상 업데이트
-    // =========================================================================
+    // 스타일 업데이트 (방문 체크 시)
     useEffect(() => {
-        if (!currentGu && guLayerRef.current) {
-            guLayerRef.current.eachLayer(layer => {
-                layer.setStyle(getGuStyle(layer.feature));
-            });
+        if (currentGu && activeDongLayerRef.current) {
+            activeDongLayerRef.current.setStyle(getDongStyle);
+        } else if (!currentGu && guLayerRef.current) {
+            guLayerRef.current.setStyle(getGuStyle);
         }
-    }, [visitedStores, guStats]);
+    }, [stores, visitedStores]);
 
-    // =========================================================================
-    // 🎨 렌더링
-    // =========================================================================
     return (
         <div className="map-container">
-            {/* 플로팅 버튼 */}
             <div className="map-floating-buttons">
-                <button
-                    className="floating-btn profile-btn"
-                    onClick={onShowProfile}
-                    title="프로필"
-                >
-                    ★
-                </button>
+                <button className="floating-btn profile-btn" onClick={onShowProfile} title="프로필">★</button>
             </div>
-
-            {/* Leaflet 지도 컨테이너 */}
             <div ref={mapContainerRef} className="map-view" />
         </div>
     );

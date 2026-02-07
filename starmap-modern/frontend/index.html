@@ -2,11 +2,12 @@
 <html lang="ko">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StarMap Seoul - React Edition</title>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarMap Seoul - React Edition</title>
 
-    <!-- 
+  <!-- 
     ============================================================================
     🎓 LEARNING: index.html in React (Vite)
     ============================================================================
@@ -28,25 +29,40 @@
     ============================================================================
   -->
 
-    <!-- Google Fonts (Pretendard) -->
-    <link rel="stylesheet" as="style" crossorigin
-        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <!-- Google Fonts (Pretendard) -->
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-TNMFBPBD');</script>
+  <!-- End Google Tag Manager -->
 </head>
 
 <body>
-    <!-- 
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TNMFBPBD" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <!-- 
     📌 이 div가 React 앱이 렌더링되는 곳
     - main.jsx에서 document.getElementById('root')로 찾아서 사용
     - 처음에는 비어있지만, React가 실행되면 내용이 채워짐
   -->
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <!-- 
+  <!-- 
     📌 Vite가 자동으로 추가해주는 스크립트
     - type="module": ES6 모듈 문법 사용
     - 개발 서버에서는 HMR(Hot Module Replacement) 지원
   -->
-    <script type="module" src="/src/main.jsx"></script>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 
 </html>

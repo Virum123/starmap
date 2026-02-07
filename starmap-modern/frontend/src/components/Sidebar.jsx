@@ -14,6 +14,7 @@
 // ============================================================================
 
 import { useMemo, useState } from 'react';
+import { trackContactClick } from '../utils/analytics'; // 📊 Analytics
 
 function Sidebar({
     stores,              // 전체 매장 배열
@@ -95,7 +96,10 @@ function Sidebar({
                             <h1 className="app-title">StarMap</h1>
                             <div className="header-actions">
                                 <span onClick={() => setShowInfoModal(true)}>INFO</span>
-                                <span onClick={() => setShowContactModal(true)}>문의</span>
+                                <span onClick={() => {
+                                    setShowContactModal(true);
+                                    trackContactClick(); // 📧 GA4: 문의 클릭
+                                }}>문의</span>
                                 <span onClick={onReset}>초기화</span>
                             </div>
                         </>

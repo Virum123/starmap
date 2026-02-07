@@ -20,6 +20,7 @@ import Sidebar from './components/Sidebar';
 import MapView from './components/MapView';
 import ProfileModal from './components/ProfileModal';
 import { celebrateDongComplete, celebrateGuComplete } from './utils/celebration';
+import { trackStoreVisit, trackAchievement, trackReset, trackUserProfile, trackViewGu } from './utils/analytics';
 
 // API 서버 주소 (FastAPI 백엔드)
 const API_URL = 'http://localhost:8000';
@@ -102,8 +103,10 @@ function App() {
             // 토글: 있으면 제거, 없으면 추가
             if (newSet.has(storeName)) {
                 newSet.delete(storeName);
+                if (store) trackStoreVisit(storeName, store.gu, 'remove'); // 🔴 GA4: 방문 취소
             } else {
                 newSet.add(storeName);
+                if (store) trackStoreVisit(storeName, store.gu, 'add'); // 🟢 GA4: 방문 체크
             }
 
             // localStorage에 저장 (새로고침해도 유지)
@@ -129,6 +132,7 @@ function App() {
 
             if (dongStores.length > 0 && dongVisited === dongStores.length) {
                 celebrateDongComplete();  // 꽃가루 효과
+                trackAchievement('dong_completion', store.gu, store.dong); // 🏆 GA4: 동 정복
             }
 
             // 구 완료 체크: 해당 구의 모든 매장 방문 여부
@@ -137,6 +141,7 @@ function App() {
 
             if (guStores.length > 0 && guVisited === guStores.length) {
                 celebrateGuComplete();  // 꽃가루 + 폭죽 효과
+                trackAchievement('gu_completion', store.gu); // 🏆 GA4: 구 정복
             }
         }, 100);
     }
@@ -149,6 +154,7 @@ function App() {
     const handleSelectGu = (guName) => {
         setCurrentGu(guName);
         setCurrentLevel('DONG');
+        trackViewGu(guName); // 🗺️ GA4: 구 상세보기
     };
 
     // 뒤로가기 → 서울 전체(구 레벨)로 이동
@@ -162,6 +168,7 @@ function App() {
         if (window.confirm('체크 내역을 초기화하시겠습니까?\n(프로필 정보는 유지됩니다)')) {
             setVisitedStores(new Set());
             localStorage.removeItem('visited_stores');
+            trackReset(); // 🔄 GA4: 초기화
         }
     };
 
@@ -169,6 +176,10 @@ function App() {
     const handleSaveProfile = (profile) => {
         setUserProfile(profile);
         localStorage.setItem('user_profile', JSON.stringify(profile));
+
+        // GA4: 프로필 저장 (신규/수정 구분)
+        trackUserProfile(profile.gender, profile.ageGroup, showWelcome);
+
         setShowWelcome(false);
         setShowProfile(false);
     };
